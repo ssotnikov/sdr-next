@@ -1,4 +1,13 @@
-﻿/docs/private/
+/docs/private/
 
-AGENTS.md
+CLAUDE.md
 spec.md
+
+# Build output
+/dist/
+/sdrnext
+/sdrnext.exe
+
+# Local working documents in Russian (not for git)
+/docs/SPECIFICATION.ru.md
+/docs/DEVELOPMENT-PLAN.ru.md
