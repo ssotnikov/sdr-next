@@ -15,18 +15,32 @@ natively, with no libusb, libairspy or libhackrf.
 
 Requires Go 1.27 or newer.
 
-```bash
-go build ./cmd/sdrnext
+Binaries are written to `dist/` with the version from `git describe`
+embedded. Cross-compiling needs no C toolchain.
+
+**Windows** (PowerShell 7):
+
+```powershell
+.\build.ps1                          # fmt + vet + test, then build windows/amd64 and windows/arm64
+.\build.ps1 -Task build -Arch arm64  # one architecture
+.\build.ps1 -Task cross              # all OS/architecture targets
+.\build.ps1 -Task check              # fmt + vet + test only
 ```
 
-Cross-compiling needs no C toolchain:
+Other tasks: `test`, `vet`, `fmt`, `vuln` (needs `govulncheck`), `clean`.
+Set the version with `-Version 0.1.0`.
+
+**Linux** (including WSL Ubuntu):
 
 ```bash
-CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o dist/sdrnext-windows-arm64.exe ./cmd/sdrnext
-CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o dist/sdrnext-linux-amd64      ./cmd/sdrnext
+make          # fmt + vet + test, then build for the host architecture
+make linux    # linux/amd64 and linux/arm64
+make cross    # all OS/architecture targets
+make race     # tests with the race detector (needs gcc: sudo apt install build-essential)
 ```
 
-In PowerShell, set the variables first, e.g. `$env:GOOS="linux"; $env:GOARCH="arm64"`.
+Other targets: `test`, `vet`, `fmt`, `vuln`, `check`, `clean`. Set the
+version with `make VERSION=0.1.0`.
 
 ## Usage
 
@@ -50,11 +64,9 @@ Run `sdrnext rx -h` for all flags. Supported modes are `wfm` and `nfm`.
 
 ## Development
 
-```bash
-go test ./...
-go vet ./...
-gofmt -l .
-```
+Development follows TDD and security by design; see [AGENTS.md](AGENTS.md)
+and ADR-0011. Run `.\build.ps1 -Task check` or `make check` before every
+commit.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch, commit and PR conventions.
 
