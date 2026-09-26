@@ -7,3 +7,7 @@ spec.md
 /dist/
 /sdrnext
 /sdrnext.exe
+
+# Local working documents in Russian (not for git)
+/docs/SPECIFICATION.ru.md
+/docs/DEVELOPMENT-PLAN.ru.md

@@ -13,3 +13,7 @@ the rules. This index is not an ADR and is updated whenever an ADR is added.
 | [ADR-0005](ADR-0005%20-%20Gain%20as%20named%20device%20stages.md) | Gain as named device stages | Accepted |
 | [ADR-0006](ADR-0006%20-%20CLI%20first,%20GUI%20deferred.md) | CLI first, GUI deferred | Partly superseded by ADR-0007 (toolkit chosen) |
 | [ADR-0007](ADR-0007%20-%20GUI%20toolkit%20Gio.md) | GUI toolkit: Gio | Accepted |
+| [ADR-0008](ADR-0008%20-%20Plugin%20system%20with%20Go%20plugins%20and%20Lua%20scripts.md) | Plugin system: built-in Go plugins and Lua scripts | Partly superseded by ADR-0010 (WASM and process plugins added) |
+| [ADR-0009](ADR-0009%20-%20First-party%20plugins%20instead%20of%20SDRSharp%20and%20SDR%2B%2B%20compatibility.md) | First-party plugins instead of SDR#/SDR++ compatibility | Accepted |
+| [ADR-0010](ADR-0010%20-%20WASM%20and%20external-process%20plugins.md) | WASM (Rust, C/C++, Zig, TinyGo) and process (Python, C#) plugins | Accepted |
+| [ADR-0011](ADR-0011%20-%20TDD%20and%20security%20by%20design.md) | Test-driven development and security by design | Accepted |

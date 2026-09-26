@@ -25,6 +25,39 @@ internal/dsp                  filters, decimators, demodulators, converters
 Dependencies point downward only. `dsp` has no dependencies inside the
 project, and drivers do not know about the receiver.
 
+Planned additions:
+
+```text
+plugin/                       public plugin contract (Go API, versioned)
+plugins/<id>/                 first-party built-in Go plugins
+internal/pluginhost           plugin lifecycle, stream hooks; Lua, WASM (wazero)
+                              and process (gRPC + shared memory) hosts
+internal/ui                   Gio GUI (ADR-0007)
+```
+
+## Plugins
+
+Plugins extend the receiver through one contract (ADR-0008, spec in
+[PLUGINS.md](PLUGINS.md)):
+
+- **Built-in Go plugins** in `plugins/<id>/` are compiled into the binary.
+  They can hook the I/Q and audio streams, add modes, sources and sinks, and
+  draw Gio panels.
+- **Lua scripts** are loaded at startup from `plugins/` next to the
+  executable and from the user config directory. They automate the radio
+  (tuning, events, timers, declarative UI) in a sandbox, without stream
+  access.
+- **WASM plugins** (Rust, C/C++, Zig, TinyGo) run sandboxed in wazero and
+  may process streams (ADR-0010).
+- **Process plugins** (Python, C#) are separate programs connected over
+  gRPC, with shared-memory ring buffers for samples. They get stream taps
+  only (ADR-0010).
+
+Stream hooks attach at four points: raw I/Q, channel I/Q, demodulator
+output and final audio. They run on the DSP goroutine under real-time rules.
+SDR# and SDR++ plugins are not loaded directly; first-party equivalents of
+the popular ones are planned instead (ADR-0009).
+
 ## Sources and drivers
 
 A `source.Driver` enumerates and opens devices of one kind and registers
@@ -91,5 +124,9 @@ Stream callback ─ copy ─► [queue, depth 8] ─► process ─► AudioWrit
 4. AM/SSB demodulators; WFM stereo; selectable de-emphasis.
 5. FFT, spectrum and waterfall; GUI in `internal/ui` on Gio (ADR-0007),
    starting with a waterfall performance prototype.
-6. Performance: SIMD-friendly FIR kernels and polyphase filtering; overrun
+6. Plugin host: the `plugin` contract (API v0), stream hooks, the Lua
+   runtime, then the Phase 1 first-party plugins (frequency manager,
+   scanner, recorder, rigctl server, network sink); later phases are listed
+   in [PLUGINS.md](PLUGINS.md).
+7. Performance: SIMD-friendly FIR kernels and polyphase filtering; overrun
    detection.
