@@ -1,4 +1,9 @@
-﻿/docs/private/
+/docs/private/
 
-AGENTS.md
+CLAUDE.md
 spec.md
+
+# Build output
+/dist/
+/sdrnext
+/sdrnext.exe
