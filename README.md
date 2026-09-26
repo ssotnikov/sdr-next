@@ -1,3 +1,8 @@
+<picture>
+  <source srcset="docs/assets/sdrnext-logo-light.svg" media="(prefers-color-scheme: light)">
+  <img src="docs/assets/sdrnext-logo-dark.svg" width="196" height="40" alt="SDR Next">
+</picture>
+
 # sdr-next
 
 SDR Next is a software-defined radio receiver for Windows (AMD64, ARM64) and
@@ -73,3 +78,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch, commit and PR conventions.
 ## License
 
 [MIT](LICENSE)
+
+The embedded IBM Plex fonts are licensed under the
+[SIL Open Font License 1.1](internal/ui/theme/giotheme/fonts/OFL.txt).

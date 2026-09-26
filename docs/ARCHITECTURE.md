@@ -35,6 +35,11 @@ internal/pluginhost           plugin lifecycle, stream hooks; Lua, WASM (wazero)
 internal/ui                   Gio GUI (ADR-0007)
 ```
 
+Already in place: `internal/ui/theme` loads the design-system themes
+(built-in dark and light, user themes in JSON) with only the standard
+library, and `internal/ui/theme/giotheme` adapts them to Gio with the
+embedded IBM Plex fonts (ADR-0012).
+
 ## Plugins
 
 Plugins extend the receiver through one contract (ADR-0008, spec in

@@ -1,0 +1,206 @@
+{
+  "$schema": "sdr-next-theme.schema.json",
+  "format": 1,
+  "id": "sdr-next-dark",
+  "name": "SDR Next — тёмная",
+  "base": "dark",
+  "colors": {
+    "bg0": "#0a0d10ff",
+    "bg1": "#10151aff",
+    "bg2": "#172029ff",
+    "bg3": "#202c37ff",
+    "line": "#26313cff",
+    "lineControl": "#5d6b79ff",
+    "ink": "#e6ebf0ff",
+    "inkMuted": "#a1adb9ff",
+    "inkFaint": "#808d99ff",
+    "dial": "#ffb224ff",
+    "dialHover": "#ffc457ff",
+    "onDial": "#1a1204ff",
+    "dialInk": "#ffb224ff",
+    "dialSoft": "#2e2208ff",
+    "onVfo": "#1a1204ff",
+    "trace": "#8fd8ffff",
+    "traceFill": "#8fd8ff33",
+    "focus": "#8fd8ffff",
+    "ok": "#5cb8ffff",
+    "warn": "#ff9a52ff",
+    "danger": "#ff6b78ff",
+    "rec": "#ff4d5eff",
+    "okSoft": "#0f2638ff",
+    "warnSoft": "#33200fff",
+    "dangerSoft": "#3a1419ff"
+  },
+  "vfo": [
+    "#ffb224ff",
+    "#5cc8ffff",
+    "#7edc8aff",
+    "#ff85c0ff",
+    "#b9a3ffff",
+    "#f2e35cff",
+    "#52e0c9ff",
+    "#ff9a6bff"
+  ],
+  "waterfall": {
+    "id": "next",
+    "name": "Next",
+    "stops": [
+      {
+        "pos": 0,
+        "color": "#0a0d10ff"
+      },
+      {
+        "pos": 0.2,
+        "color": "#0c2a4cff"
+      },
+      {
+        "pos": 0.4,
+        "color": "#0f6b8eff"
+      },
+      {
+        "pos": 0.6,
+        "color": "#3cc0a3ff"
+      },
+      {
+        "pos": 0.8,
+        "color": "#ffd23fff"
+      },
+      {
+        "pos": 0.92,
+        "color": "#ff7a1aff"
+      },
+      {
+        "pos": 1,
+        "color": "#fff4e0ff"
+      }
+    ]
+  },
+  "fonts": {
+    "sans": {
+      "family": "IBM Plex Sans",
+      "files": {
+        "400": "IBMPlexSans-Regular.ttf",
+        "500": "IBMPlexSans-Medium.ttf",
+        "600": "IBMPlexSans-SemiBold.ttf"
+      }
+    },
+    "mono": {
+      "family": "IBM Plex Mono",
+      "files": {
+        "400": "IBMPlexMono-Regular.ttf",
+        "500": "IBMPlexMono-Medium.ttf"
+      }
+    }
+  },
+  "text": {
+    "display": {
+      "family": "sans",
+      "size": 40.0,
+      "lineHeight": 44.0,
+      "weight": 600,
+      "tracking": -0.02
+    },
+    "title": {
+      "family": "sans",
+      "size": 20.0,
+      "lineHeight": 28.0,
+      "weight": 600,
+      "tracking": -0.01
+    },
+    "heading": {
+      "family": "sans",
+      "size": 13.0,
+      "lineHeight": 20.0,
+      "weight": 600
+    },
+    "body": {
+      "family": "sans",
+      "size": 13.0,
+      "lineHeight": 20.0,
+      "weight": 400
+    },
+    "body-strong": {
+      "family": "sans",
+      "size": 13.0,
+      "lineHeight": 20.0,
+      "weight": 500
+    },
+    "caption": {
+      "family": "sans",
+      "size": 12.0,
+      "lineHeight": 16.0,
+      "weight": 400
+    },
+    "label": {
+      "family": "sans",
+      "size": 11.0,
+      "lineHeight": 16.0,
+      "weight": 600,
+      "tracking": 0.06,
+      "uppercase": true
+    },
+    "freq-xl": {
+      "family": "mono",
+      "size": 32.0,
+      "lineHeight": 36.0,
+      "weight": 500
+    },
+    "freq": {
+      "family": "mono",
+      "size": 16.0,
+      "lineHeight": 20.0,
+      "weight": 500
+    },
+    "readout": {
+      "family": "mono",
+      "size": 11.0,
+      "lineHeight": 16.0,
+      "weight": 400
+    },
+    "code": {
+      "family": "mono",
+      "size": 12.0,
+      "lineHeight": 18.0,
+      "weight": 400
+    }
+  },
+  "metrics": {
+    "spacing": {
+      "space-0": 2.0,
+      "space-1": 4.0,
+      "space-2": 8.0,
+      "space-3": 12.0,
+      "space-4": 16.0,
+      "space-6": 24.0,
+      "space-8": 32.0
+    },
+    "radius": {
+      "radius-0": 0.0,
+      "radius-sm": 3.0,
+      "radius-md": 6.0,
+      "radius-lg": 10.0,
+      "radius-full": 999
+    },
+    "size": {
+      "control-sm": 22.0,
+      "control-md": 28.0,
+      "control-lg": 36.0,
+      "sidebar-w": 288.0
+    }
+  },
+  "opacity": {
+    "vfo-band": 0.18,
+    "vfo-band-active": 0.28,
+    "disabled": 0.4
+  },
+  "focusRing": {
+    "gap": 2,
+    "width": 2,
+    "color": "focus"
+  },
+  "floatShadow": {
+    "color": "#000000b3",
+    "offsetY": 8,
+    "blur": 24
+  }
+}

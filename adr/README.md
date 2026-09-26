@@ -17,3 +17,4 @@ the rules. This index is not an ADR and is updated whenever an ADR is added.
 | [ADR-0009](ADR-0009%20-%20First-party%20plugins%20instead%20of%20SDRSharp%20and%20SDR%2B%2B%20compatibility.md) | First-party plugins instead of SDR#/SDR++ compatibility | Accepted |
 | [ADR-0010](ADR-0010%20-%20WASM%20and%20external-process%20plugins.md) | WASM (Rust, C/C++, Zig, TinyGo) and process (Python, C#) plugins | Accepted |
 | [ADR-0011](ADR-0011%20-%20TDD%20and%20security%20by%20design.md) | Test-driven development and security by design | Accepted |
+| [ADR-0012](ADR-0012%20-%20Design%20system,%20themes%20and%20brand%20assets.md) | Design system, themes (JSON format 1), IBM Plex fonts and brand assets | Accepted |

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=SDR Next
+GenericName=SDR Receiver
+GenericName[ru]=SDR-приёмник
+Comment=Multiplatform SDR Receiver
+Comment[ru]=Мультиплатформенный SDR-приёмник
+Exec=sdrnext
+Icon=sdrnext
+Terminal=false
+Categories=HamRadio;AudioVideo;Audio;Science;
+Keywords=SDR;radio;receiver;Airspy;HackRF;waterfall;spectrum;
+StartupWMClass=sdrnext

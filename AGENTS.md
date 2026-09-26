@@ -37,10 +37,14 @@ internal/source/    Source interface, registry, drivers (sim, iqfile, hackrf, ai
 internal/usb/       cgo-free USB layer (WinUSB, usbfs), usbtest fake
 internal/receiver/  demodulation chain and threading
 internal/sink/wav/  WAV output
+internal/ui/theme/  design-system themes (JSON, stdlib only); giotheme/ adapts them to Gio
 plugin/             public plugin contract (planned)
 plugins/<id>/       first-party built-in Go plugins
+assets/icon/        master application icon (SVG, PNG)
+packaging/          platform packaging assets (Windows .ico/MSIX, Linux icons and .desktop)
 adr/                Architecture Decision Records
 docs/               architecture, plugin spec, local Russian spec and plan
+docs/private/       local-only owner material, e.g. the brand book (git-ignored)
 ```
 
 ## Build and test commands
@@ -80,7 +84,11 @@ make vuln       # govulncheck (must be installed)
   not block the DSP goroutine.
 - Comments explain *why*; package docs describe the role of the package.
 - Keep dependencies minimal, maintained and license-compatible (MIT, BSD,
-  Apache-2.0, ISC); no GPL code.
+  Apache-2.0, ISC; OFL-1.1 for fonts); no GPL code.
+- UI code takes colours, type styles, spacing and sizes from the theme
+  (`internal/ui/theme`, ADR-0012) and never hard-codes them. Brand changes
+  come from the brand book in `docs/private/brand-book/`, which is never
+  committed.
 
 ## Testing instructions: TDD (mandatory, ADR-0011)
 
@@ -181,5 +189,5 @@ Full rules are in `adr/ADR-0001 - Record decisions as immutable ADRs.md`.
   - the PR description covers Summary, Motivation, Changes, Testing and
     Related issues.
 - Before committing, review `git status` and `git diff --staged`. Make sure
-  no secrets and no local-only files (`docs/*.ru.md`, `.claude/`, `dist/`)
-  are included.
+  no secrets and no local-only files (`docs/*.ru.md`, `docs/private/`,
+  `.claude/`, `dist/`) are included.

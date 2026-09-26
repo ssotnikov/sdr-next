@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sdr-next-theme.schema.json",
+  "title": "SDR Next UI theme (format 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "id",
+    "name",
+    "base"
+  ],
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "num": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 4096
+    },
+    "numMap": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "$ref": "#/$defs/num"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "base": {
+      "enum": [
+        "dark",
+        "light"
+      ],
+      "description": "Missing values fall back to the built-in theme of this base."
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bg0": {
+          "$ref": "#/$defs/color"
+        },
+        "bg1": {
+          "$ref": "#/$defs/color"
+        },
+        "bg2": {
+          "$ref": "#/$defs/color"
+        },
+        "bg3": {
+          "$ref": "#/$defs/color"
+        },
+        "line": {
+          "$ref": "#/$defs/color"
+        },
+        "lineControl": {
+          "$ref": "#/$defs/color"
+        },
+        "ink": {
+          "$ref": "#/$defs/color"
+        },
+        "inkMuted": {
+          "$ref": "#/$defs/color"
+        },
+        "inkFaint": {
+          "$ref": "#/$defs/color"
+        },
+        "dial": {
+          "$ref": "#/$defs/color"
+        },
+        "dialHover": {
+          "$ref": "#/$defs/color"
+        },
+        "onDial": {
+          "$ref": "#/$defs/color"
+        },
+        "dialInk": {
+          "$ref": "#/$defs/color"
+        },
+        "dialSoft": {
+          "$ref": "#/$defs/color"
+        },
+        "onVfo": {
+          "$ref": "#/$defs/color"
+        },
+        "trace": {
+          "$ref": "#/$defs/color"
+        },
+        "traceFill": {
+          "$ref": "#/$defs/color"
+        },
+        "focus": {
+          "$ref": "#/$defs/color"
+        },
+        "ok": {
+          "$ref": "#/$defs/color"
+        },
+        "warn": {
+          "$ref": "#/$defs/color"
+        },
+        "danger": {
+          "$ref": "#/$defs/color"
+        },
+        "rec": {
+          "$ref": "#/$defs/color"
+        },
+        "okSoft": {
+          "$ref": "#/$defs/color"
+        },
+        "warnSoft": {
+          "$ref": "#/$defs/color"
+        },
+        "dangerSoft": {
+          "$ref": "#/$defs/color"
+        }
+      }
+    },
+    "vfo": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/color"
+      }
+    },
+    "waterfall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stops"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "stops": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pos",
+              "color"
+            ],
+            "properties": {
+              "pos": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              }
+            }
+          }
+        }
+      }
+    },
+    "fonts": {
+      "type": "object",
+      "maxProperties": 4,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "files": {
+            "type": "object",
+            "maxProperties": 9,
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,128}$"
+            }
+          }
+        },
+        "required": [
+          "family"
+        ]
+      },
+      "propertyNames": {
+        "enum": [
+          "sans",
+          "mono"
+        ]
+      }
+    },
+    "text": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family",
+          "size",
+          "lineHeight",
+          "weight"
+        ],
+        "properties": {
+          "family": {
+            "enum": [
+              "sans",
+              "mono"
+            ]
+          },
+          "size": {
+            "type": "number",
+            "minimum": 6,
+            "maximum": 96
+          },
+          "lineHeight": {
+            "type": "number",
+            "minimum": 6,
+            "maximum": 128
+          },
+          "weight": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 900
+          },
+          "tracking": {
+            "type": "number",
+            "minimum": -0.2,
+            "maximum": 0.5
+          },
+          "uppercase": {
+            "type": "boolean"
+          }
+        }
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spacing": {
+          "$ref": "#/$defs/numMap"
+        },
+        "radius": {
+          "$ref": "#/$defs/numMap"
+        },
+        "size": {
+          "$ref": "#/$defs/numMap"
+        }
+      }
+    },
+    "opacity": {
+      "type": "object",
+      "maxProperties": 16,
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      }
+    },
+    "focusRing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "width": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "color": {
+          "enum": [
+            "bg0",
+            "bg1",
+            "bg2",
+            "bg3",
+            "line",
+            "lineControl",
+            "ink",
+            "inkMuted",
+            "inkFaint",
+            "dial",
+            "dialHover",
+            "onDial",
+            "dialInk",
+            "dialSoft",
+            "onVfo",
+            "trace",
+            "traceFill",
+            "focus",
+            "ok",
+            "warn",
+            "danger",
+            "rec",
+            "okSoft",
+            "warnSoft",
+            "dangerSoft"
+          ],
+          "description": "A key of \"colors\"."
+        }
+      },
+      "required": [
+        "gap",
+        "width",
+        "color"
+      ]
+    },
+    "floatShadow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "offsetY": {
+          "type": "number",
+          "minimum": -64,
+          "maximum": 64
+        },
+        "blur": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        }
+      },
+      "required": [
+        "color"
+      ]
+    }
+  }
+}
