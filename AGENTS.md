@@ -194,6 +194,12 @@ Do not create commits, push branches, open or merge pull requests, tag
 releases, or otherwise modify remote repository state unless the current
 task explicitly authorizes that action.
 
+A pull request is the default for substantial changes, but it is not
+mandatory. The owner may push directly to any branch, including `main`,
+and when the owner asks an agent to push, the agent pushes to the named
+branch (including `main`) without opening a pull request. Open a pull
+request only when the owner asks for one.
+
 Before finishing, inspect:
 
 ```text
