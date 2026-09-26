@@ -181,13 +181,42 @@ Full rules are in `adr/ADR-0001 - Record decisions as immutable ADRs.md`.
 - Do not copy code from SDR++ (GPL-3.0) or SDR# plugins; implement from
   behaviour and public documentation (ADR-0009).
 
-## Commits and pull requests
+## Git and pull requests
 
-- Follow `CONTRIBUTING.md`:
-  - branches `<type>/<short-description>`;
-  - Conventional Commits; one logical change per commit or PR;
-  - the PR description covers Summary, Motivation, Changes, Testing and
-    Related issues.
-- Before committing, review `git status` and `git diff --staged`. Make sure
-  no secrets and no local-only files (`docs/*.ru.md`, `docs/private/`,
-  `.claude/`, `dist/`) are included.
+Follow `CONTRIBUTING.md` for branch naming, Conventional Commits, pull
+requests, reviews, and release workflow. In short: branches are named
+`<type>/<short-description>`, and a PR description covers Summary,
+Motivation, Changes, Testing and Related issues.
+
+Keep each change focused on one logical purpose.
+
+Do not create commits, push branches, open or merge pull requests, tag
+releases, or otherwise modify remote repository state unless the current
+task explicitly authorizes that action.
+
+Before finishing, inspect:
+
+```text
+git status
+git diff
+git diff --staged
+```
+
+Do not include unrelated formatting changes, temporary output, local
+configuration, caches, build artifacts, or secrets. In this repository the
+local-only paths are `docs/*.ru.md`, `docs/private/`, `.claude/` and
+`dist/`.
+
+When creating commits:
+
+- use Conventional Commits;
+- preserve the human developer as the primary author;
+- add AI attribution using `Co-authored-by` trailers at the end of the
+  commit message;
+- for Claude Code contributions, add:
+  `Co-authored-by: Claude <noreply@anthropic.com>`
+- for ChatGPT/Codex contributions, add:
+  `Co-authored-by: Codex <codex@openai.com>`
+- when both Claude Code and ChatGPT/Codex contributed to the same commit,
+  add both trailers;
+- separate the trailers from the commit message body with a blank line.
