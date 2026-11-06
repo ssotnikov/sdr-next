@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Language: ru
+  All artifacts must be written in ru.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Project root: D:/Projects/sdr-app.
+  Read docs/sdr/SDR_Architecture_Baseline_1.0.md and docs/sdr/OPEN_DECISIONS.md for SDR scope.
+  Preserve accepted ADR-001 through ADR-012; O-001 through O-020 remain open until explicit user approval.
+  Keep architecture decisions in docs/sdr/ and link them from OpenSpec changes.
+  This is a greenfield C++20 / Qt Quick project, desktop Windows and Linux first.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
