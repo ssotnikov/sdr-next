@@ -10,8 +10,23 @@
 
 ## Git
 
+- Перед подготовкой изменений, коммитов, PR, ревью и релизов читай и применяй [CONTRIBUTING.md](CONTRIBUTING.md). Правила этого файла уточняют общие соглашения CONTRIBUTING.md.
 - Основная рабочая ветка — `main`. Создавай коммиты в `main` по завершении логически связанного изменения или проверенного этапа работы без повторного запроса разрешения.
 - Перед коммитом проверяй состав изменений и выполняй соответствующие им проверки. Сообщение коммита должно описывать сохранённый результат; незавершённые задачи и открытые решения сохраняют свой статус.
+
+Do not include unrelated formatting changes, temporary output, local configuration, caches, build artifacts, or secrets.
+
+When creating commits:
+
+- use Conventional Commits;
+- preserve the human developer as the primary author;
+- add AI attribution using `Co-authored-by` trailers at the end of the commit message;
+- for Claude Code contributions, add:
+  `Co-authored-by: Claude <noreply@anthropic.com>`
+- for ChatGPT/Codex contributions, add:
+  `Co-authored-by: Codex <codex@openai.com>`
+- when both Claude Code and ChatGPT/Codex contributed to the same commit, add both trailers;
+- separate the trailers from the commit message body with a blank line.
 
 ## Архитектурные решения
 
