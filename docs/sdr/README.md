@@ -11,6 +11,7 @@
 - [12 ADR](ADR_REGISTER.md) — выдержка из раздела 2 спецификации.
 - [Реестр 20 исходных открытых решений](OPEN_DECISIONS.md) — историческая выдержка и текущие статусы.
 - [ADR-013: платформы](ADR-013-desktop-platforms.md), [ADR-014: технические контракты](ADR-014-mvp-implementation-contracts.md), [ADR-015: эталон и приёмка](ADR-015-reference-and-acceptance.md).
+- [ADR-016: перенос испытаний RTL-SDR/Airspy](ADR-016-deferred-device-qualification.md), [термины подключения источников](GLOSSARY.md).
 - [DSP API](DSP_API.md), [Plugin SDK](PLUGIN_SDK.md), [зависимости](DEPENDENCIES.md), [проверка реализации](MVP_V0_1_VERIFICATION.md).
 
 ## Происхождение и полнота

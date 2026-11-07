@@ -8,6 +8,8 @@
 
 Исходные 12 ADR сохранены без переутверждения. Пользователь отдельно утвердил платформы в ADR-013, делегировал технические решения с фиксацией в ADR-014, утвердил эталон и performance/DSP-критерии в ADR-015. O-006 остаётся открытым; O-016…O-018 — несогласованный roadmap после MVP. O-014/O-019 задают технический путь, но не означают прохождения платформенной/релизной матрицы.
 
+Последующее явное решение пользователя [ADR-016](ADR-016-deferred-device-qualification.md): реальные испытания RTL-SDR и Airspy перенесены после MVP. Они теперь deferred, не pass и не самостоятельный блокер v0.1. Полная будущая O-006 остаётся открытой; текущая обязательная аппаратная приёмка — HackRF. Две задачи испытаний перенесены из активного checklist в roadmap без отметки выполнения.
+
 Headless `core/` не зависит от Qt. `app/` содержит QML/controller, acquisition worker и DSP/record worker; конечные очереди отделяют GUI от IQ. `sdk/include/sdr/plugin.h` — C ABI Source/Demodulator. Примеры C++ собираются отдельно; Rust source вызывается тем же C++ host. Нативные модули доверенные, crash isolation отсутствует.
 
 ## Среда и свидетельства
@@ -56,7 +58,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 | ID | Статус | Свидетельство / что осталось |
 |---|---|---|
 | F-001 | partial/blocked | Windows 11/MSVC 2022 build/tests/package/visual pass; Windows 10, Debian 12 и полная Linux GUI matrix не проверены |
-| F-002 | partial/blocked | HackRF короткий RX; нет RTL-SDR/Airspy, всей OS/device matrix |
+| F-002 | partial; RTL-SDR/Airspy deferred | Для v0.1 не завершена полная применимая HackRF OS/settings/failure matrix; реальные RTL-SDR/Airspy испытания после MVP по ADR-016, не блокируют текущий выпуск |
 | F-003 | partial | CF32/metadata/EOF round-trip пройден; повторить финальную ревизию Linux |
 | F-004 | partial | Capability UI, rate/center readback, gain/unsupported checks в коде; полный аппаратный tune/gain/options/unplug протокол не выполнен |
 | F-005 | partial | Принятые synthetic DSP тесты проходят; ручное прослушивание на двух ОС отсутствует |
@@ -105,7 +107,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 | settings-diagnostics: Диагностика приёма | Snapshot, JSONL, status counters | Перегрузка тракта — Faulted/counters наблюдались при диагностике, полный sustained protocol not verified |
 | settings-diagnostics: Приватность по умолчанию | Локальные QFile события, ручной export | Первый запуск и ошибка — автоматических network/crash-upload путей в коде нет; runtime network capture не выполнялся |
 | release-acceptance: Портативная поставка | package/smoke scripts | Запуск пакета — Windows startup/exit pass; весь RX/audio/SDK/storage и Linux package partial |
-| release-acceptance: Свидетельства аппаратной поддержки | этот отчёт | Airspy недоступен для проверки — blocked явно сохранён, поддержки по тесту не заявлено |
+| release-acceptance: Свидетельства аппаратной поддержки | этот отчёт, ADR-016 | Airspy недоступен для проверки — deferred по решению пользователя; совместимость по непроведённым испытаниям не заявлена; текущая HackRF matrix остаётся обязательной |
 | release-acceptance: Воспроизводимые benchmarks | core/src/bench.cpp | Измерение профиля — короткие 2.4/10/20 MSPS есть; полный metrics collection/burn-in not verified |
 | release-acceptance: Числовая приёмка после утверждения порогов | ADR-015, tests/core_tests.cpp | Пороги не согласованы — историческое условие теперь не наступает: пользователь их утвердил; числовой performance verdict всё ещё not evaluated |
 | release-acceptance: Аудит релизных зависимостей | notices/licenses/Qt SBOM/package inventory | Неожиданная зависимость в бинарнике — initial DLL inventory есть; финальный license/link audit not verified |
@@ -113,14 +115,14 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 
 ## Verify: полнота, корректность, согласованность
 
-- **Completeness: CRITICAL.** Выполнены 27/56 задач. Остальные 29 сохранены в tasks.md с исходными формулировками; каждая требует своего указанного результата, даже если значительная часть кода уже реализована. Полная матрица F и 34 требований/40 сценариев составлена, но её partial/blocked строки не считаются pass.
+- **Completeness: CRITICAL.** Выполнены 27/54 активных задач. Оставшиеся 27 требуют своих результатов, даже если значительная часть кода уже реализована. Две прежние задачи реальных RTL-SDR/Airspy испытаний отложены в roadmap по ADR-016, не отмечены выполненными. Полная матрица F и 34 требований/40 сценариев составлена; partial/blocked/deferred строки не считаются pass.
 - **Correctness: WARNING.** Код найден для основных функциональных требований; непокрытые негативные сценарии и непроверенные среды перечислены поимённо выше. После устранения промежуточных GUI/RX дефектов требуется полная приёмка, а не только unit pass.
 - **Coherence: соответствует техническим ADR с ограничениями.** Исходная baseline неизменна; новые решения выделены в ADR-013…015, design.md актуализирован. C++20 core/Qt GUI/C ABI и ограниченные очереди соответствуют принятой модели. Own FIR/FFT и mono WFM — осознанный объём ADR-014. Allocation-free realtime и DSP SIMD не заявлены.
 
 ## Что требуется для G6
 
 1. Оставшиеся утверждённые Windows/Linux окружения: Windows 10, финальные Linux build/QML/audio, X11/Wayland/HiDPI, USB permissions и Ubuntu 22.04 portable build. MSVC 2022 на Windows 11 теперь проверен.
-2. RTL-SDR и Airspy с конкретными моделями/драйверами; полная аппаратная tune/gain/options/unplug/reopen matrix, включая HackRF.
+2. Полная применимая аппаратная tune/gain/options/unplug/reopen matrix HackRF. Реальные RTL-SDR/Airspy испытания отложены после MVP по ADR-016; их непроведение не является блокером текущего G6.
 3. Восьмичасовой профиль 2.4 MSPS с GUI/audio/recording и сырыми метриками CPU/RAM/new frames/UI p95/audio latency/drops. Короткие результаты выше не доказывают SLO.
 4. Негативные SDK/init/lifecycle и storage fault-injection сценарии, ручное прослушивание на обеих ОС, полный restart/layout/DPI protocol.
 5. Портативные пакеты на чистых машинах, завершённый аудит фактических зависимостей и notices, повторный OpenSpec verify. После этого — синхронизация спецификаций и archive.

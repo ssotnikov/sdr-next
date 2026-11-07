@@ -26,6 +26,8 @@ CARGO_TARGET_DIR=build/rust cargo build --release --manifest-path sdk/rust/Cargo
 
 ## Manifest
 
+Source-плагин v1.0 — источник IQ, а не полный поставщик устройств: один manifest регистрирует один источник, конфигурация содержит sample rate/center/offset. В ABI нет перечисления устройств и полного capability/control API для gain, PPM, Bias-T и direct sampling. Встроенный Soapy-адаптер использует отдельный путь и сейчас перечисляет `hackrf`, `rtlsdr`, `airspy` явно. Внешние Soapy-драйверы и собственные Source-плагины — разные уровни расширения; подробности в ADR-016 и GLOSSARY.md.
+
 Обязательные поля: id, name, version, api_major, api_minor, kind (`source` или `demodulator`), platform (`Windows`/`Linux`), arch (`x86_64`), license, library (только имя соседнего файла). Абсолютные пути и переходы в library не принимаются. Дубликаты id, несовместимые версии, неизвестный kind и другая платформа отклоняются до регистрации. `api_minor` — минимально требуемая minor версия, в v1.0 это 0. Версия плагина независима от версии ABI.
 
 ## Жизненный цикл
