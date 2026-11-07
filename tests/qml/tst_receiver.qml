@@ -50,7 +50,7 @@ TestCase {
         if (!testHackrf) skip("Physical HackRF test requires SDR_TEST_HACKRF=1")
         let index = -1
         for (let i=0; i<receiver.devices.length; ++i)
-            if (String(receiver.devices[i].id).indexOf("soapy:") === 0 && String(receiver.devices[i].id).indexOf("driver=hackrf") >= 0) index = i
+            if (String(receiver.devices[i].id).indexOf("device:org.sdr.device.hackrf:") === 0) index = i
         verify(index >= 0, "HackRF must be connected")
         const initial = Number(receiver.status.frames)
         receiver.start(index, {centerMHz: 100, rate: 2400000, offsetKHz: 0, mode: "WFM", gain: 16, ppm: 0, biasT: false, directSampling: 0, squelch: -120})
@@ -62,5 +62,27 @@ TestCase {
         compare(receiver.status.audioUnderruns, 0)
         receiver.stop()
         tryVerify(function() { return !receiver.status.running }, 10000)
+    }
+    function test_saved_source_identity() {
+        const devices = [{id:"synthetic"},{id:"device:vendor.one:key"}]
+        compare(appWindow.sourceIndex("soapy:key", devices), 1)
+        compare(appWindow.sourceIndex("device:vendor.one:key", devices), 1)
+        compare(appWindow.sourceIndex("soapy:missing", devices), -1)
+        compare(appWindow.sourceIndex("device:missing:key", devices), -1)
+        devices.push({id:"device:vendor.two:key"})
+        compare(appWindow.sourceIndex("soapy:key", devices), -1)
+    }
+    function test_unsupported_settings_not_sent() {
+        findChild(appWindow,"sourceSelector").currentIndex=0
+        const ppm=findChild(appWindow,"ppmSetting")
+        const bias=findChild(appWindow,"biasSetting")
+        const direct=findChild(appWindow,"directSetting")
+        const previous=[ppm.text,bias.checked,direct.currentIndex]
+        ppm.text="25"; bias.checked=true; direct.currentIndex=2
+        const parameters=appWindow.parameters()
+        compare(parameters.ppm,0)
+        compare(parameters.biasT,false)
+        compare(parameters.directSampling,0)
+        ppm.text=previous[0]; bias.checked=previous[1]; direct.currentIndex=previous[2]
     }
 }

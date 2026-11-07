@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.22)
+file(MAKE_DIRECTORY "${PROBE_DIR}/src")
+file(WRITE "${PROBE_DIR}/src/CMakeLists.txt"
+  "cmake_minimum_required(VERSION 3.22)\nproject(dependency_probe LANGUAGES CXX)\ninclude(\"${DEPENDENCY_MODULE}\")\nadd_executable(probe main.cpp)\n")
+file(WRITE "${PROBE_DIR}/src/main.cpp" "#include <cstdio>\n#include \"value.hpp\"\nint main(){std::printf(\"%d\",PROBE_VALUE);}\n")
+file(WRITE "${PROBE_DIR}/src/value.hpp" "#define PROBE_VALUE 0\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -S "${PROBE_DIR}/src" -B "${PROBE_DIR}/bin"
+  -G Ninja "-DCMAKE_CXX_COMPILER=${PROBE_COMPILER}" -DCMAKE_BUILD_TYPE=Release
+  RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE failure)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "Dependency probe configure failed: ${failure}")
+endif()
+foreach(expected IN ITEMS 0 42)
+  file(WRITE "${PROBE_DIR}/src/value.hpp" "#define PROBE_VALUE ${expected}\n")
+  execute_process(COMMAND "${CMAKE_COMMAND}" --build "${PROBE_DIR}/bin"
+    RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE failure)
+  if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "Dependency probe build failed: ${failure}")
+  endif()
+  execute_process(COMMAND "${PROBE_DIR}/bin/probe.exe" RESULT_VARIABLE rc OUTPUT_VARIABLE actual)
+  if(NOT rc EQUAL 0 OR NOT actual STREQUAL "${expected}")
+    message(FATAL_ERROR "Header change did not rebuild the dependent source: ${actual}, expected ${expected}")
+  endif()
+endforeach()
+message(STATUS "MSVC/Ninja rebuilt after header change")

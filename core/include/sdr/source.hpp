@@ -11,6 +11,5 @@ class Source {
     virtual bool paced() const { return true; }
 };
 std::vector<DeviceInfo> enumerate_devices();
-bool hardware_available();
 std::unique_ptr<Source> open_source(const std::string &id, Config &config);
 } // namespace sdr

@@ -4,8 +4,10 @@
 #include <QStringList>
 #include <atomic>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <sdr/bounded_queue.hpp>
+#include <sdr/device.hpp>
 #include <sdr/dsp.hpp>
 #include <sdr/plugin.hpp>
 #include <sdr/recording.hpp>
@@ -31,14 +33,18 @@ struct Snapshot {
     bool running = false, recording = false;
     std::vector<sdr::DeviceInfo> devices;
     QStringList demods{"AM", "NFM", "WFM"}, plugins;
+    QStringList device_modules, device_module_errors;
     std::vector<float> spectrum;
     std::uint64_t frame = 0, iq_samples = 0, gaps = 0, overflows = 0;
     double sample_rate = 2400000, center_hz = 100000000, power_db = -120, processing_ms = 0;
+    double gain = 0, ppm = 0;
+    bool bias_t = false;
+    int direct_sampling = 0;
     std::size_t queue_depth = 0;
 };
 class Engine {
   public:
-    explicit Engine(AudioBuffer &);
+    explicit Engine(AudioBuffer &, const QString &device_directory = {});
     ~Engine();
     bool post(std::function<void()>);
     Snapshot snapshot();
@@ -64,6 +70,13 @@ class Engine {
     std::atomic<bool> acquisition_done_{false};
     std::atomic<std::uint64_t> gaps_{0}, overflows_{0};
     std::vector<std::shared_ptr<sdr::PluginModule>> modules_;
+    struct DeviceBinding {
+        std::shared_ptr<sdr::DeviceModule> module;
+        std::string key;
+    };
+    std::map<std::string, DeviceBinding> device_registry_;
+    std::vector<std::shared_ptr<sdr::DeviceModule>> device_modules_;
+    QString device_directory_;
     std::unique_ptr<sdr::PluginInstance> plugin_demod_;
     sdr::Demodulator demod_;
     std::vector<float> audio_block_;

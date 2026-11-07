@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sdr/device.hpp>
 #include <sdr/dsp.hpp>
 #include <sdr/path.hpp>
 #include <sdr/recording.hpp>
@@ -13,7 +14,7 @@ int main(int argc, char **argv) {
     try {
         sdr::Config config;
         double seconds = 1;
-        std::string output, device = "synthetic";
+        std::string output, module_path, device = "synthetic";
         for (int i = 1; i < argc; ++i) {
             const std::string flag = argv[i];
             if (i + 1 >= argc)
@@ -29,12 +30,24 @@ int main(int argc, char **argv) {
                 output = value;
             else if (flag == "--device")
                 device = value;
+            else if (flag == "--module")
+                module_path = value;
             else
                 throw std::invalid_argument("Unknown argument");
         }
         if (!std::isfinite(seconds) || seconds <= 0 || seconds > 28800)
             throw std::invalid_argument("Duration must be 0 < seconds <= 28800");
-        auto source = sdr::open_source(device, config);
+        std::unique_ptr<sdr::Source> source;
+        if (module_path.empty())
+            source = sdr::open_source(device, config);
+        else {
+            auto module = std::make_shared<sdr::DeviceModule>(sdr::path_from_utf8(module_path));
+            auto devices = module->devices();
+            if (devices.empty())
+                throw std::runtime_error("Device module has no connected devices");
+            const auto key = device == "synthetic" ? devices.front().id : device;
+            source = std::make_unique<sdr::DeviceSource>(module, key, config);
+        }
         sdr::Demodulator demod;
         demod.configure(config);
         sdr::IqWriter writer;

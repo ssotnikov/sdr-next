@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -64,7 +65,10 @@ void AudioBuffer::clear(bool reset_metrics) {
     if (reset_metrics)
         underruns_ = drops_ = 0;
 }
-Engine::Engine(AudioBuffer &audio) : audio_(audio) {
+Engine::Engine(AudioBuffer &audio, const QString &device_directory)
+    : audio_(audio), device_directory_(device_directory.isEmpty()
+                                           ? QCoreApplication::applicationDirPath() + "/devices"
+                                           : device_directory) {
     worker_ = std::jthread([this](std::stop_token token) { run(token); });
     post([this] { scan(); });
 }
@@ -105,11 +109,64 @@ void Engine::scan() {
     if (current_.running)
         throw std::runtime_error("Stop RX before scanning devices");
     current_.devices = sdr::enumerate_devices();
+    device_registry_.clear();
+    device_modules_.clear();
+    current_.device_modules.clear();
+    current_.device_module_errors.clear();
+    const QDir directory(device_directory_);
+    for (const auto &name : directory.entryList({"*.json"}, QDir::Files, QDir::Name)) {
+        try {
+            QFile file(directory.filePath(name));
+            if (!file.open(QIODevice::ReadOnly) || file.size() > 65536)
+                throw std::runtime_error("Cannot read device manifest");
+            QJsonParseError error;
+            const auto doc = QJsonDocument::fromJson(file.readAll(), &error);
+            if (error.error != QJsonParseError::NoError || !doc.isObject())
+                throw std::runtime_error("Invalid device manifest JSON");
+            const auto m = doc.object();
+            const auto id = m["id"].toString();
+            const auto library = m["library"].toString();
+            const QString platform =
+#ifdef Q_OS_WIN
+                "Windows";
+#else
+                "Linux";
+#endif
+            if (id.isEmpty() || id.size() > 128 || id.contains(':') ||
+                m["version"].toString().isEmpty() || m["license"].toString().isEmpty() ||
+                m["kind"].toString() != "device" || m["platform"].toString() != platform ||
+                m["arch"].toString() != QSysInfo::currentCpuArchitecture() ||
+                m["api_major"].toInt(-1) != SDR_DEVICE_ABI_MAJOR || m["api_minor"].toInt(-1) < 0 ||
+                m["api_minor"].toInt() > SDR_DEVICE_ABI_MINOR || library.isEmpty() ||
+                library == "." || library == ".." || library.contains('/') ||
+                library.contains('\\') || library.contains(':') ||
+                QFileInfo(library).fileName() != library)
+                throw std::runtime_error("Incompatible device manifest or library path");
+            if (current_.device_modules.contains(id))
+                throw std::runtime_error("Duplicate device provider ID");
+            auto module = std::make_shared<sdr::DeviceModule>(path(directory.filePath(library)),
+                                                              id.toStdString());
+            auto devices = module->devices();
+            for (auto &device : devices) {
+                const auto key = device.id;
+                device.id = "device:" + id.toStdString() + ":" + key;
+                if (device_registry_.contains(device.id))
+                    throw std::runtime_error("Duplicate device ID");
+                device_registry_.emplace(device.id, DeviceBinding{module, key});
+                current_.devices.push_back(std::move(device));
+            }
+            device_modules_.push_back(std::move(module));
+            current_.device_modules.push_back(id);
+            event("device.module.loaded", id);
+        } catch (const std::exception &e) {
+            const auto message = name + ": " + QString::fromUtf8(e.what());
+            current_.device_module_errors.push_back(message);
+            event("device.module.unavailable", message);
+        }
+    }
     for (const auto &m : modules_)
         if (m->api().kind == SDR_SOURCE)
             current_.devices.push_back({std::string("plugin:") + m->api().id, m->api().id, {}});
-    if (!sdr::hardware_available())
-        current_.error = "SoapySDR 0.8 runtime is unavailable: hardware RX is disabled";
     event("source.scan", QString::number(current_.devices.size()));
 }
 void Engine::start(const std::string &id, sdr::Config requested) {
@@ -149,6 +206,15 @@ void Engine::start(const std::string &id, sdr::Config requested) {
     auto promise = std::make_shared<std::promise<sdr::Config>>();
     auto ready = promise->get_future();
     std::shared_ptr<sdr::PluginModule> module;
+    std::shared_ptr<sdr::DeviceModule> device_module;
+    std::string device_key;
+    if (id.starts_with("device:")) {
+        const auto found = device_registry_.find(id);
+        if (found == device_registry_.end())
+            throw std::runtime_error("Selected device module is unavailable");
+        device_module = found->second.module;
+        device_key = found->second.key;
+    }
     if (id.starts_with("plugin:")) {
         for (const auto &m : modules_)
             if (id == std::string("plugin:") + m->api().id)
@@ -164,13 +230,18 @@ void Engine::start(const std::string &id, sdr::Config requested) {
         acquisition_failure_.clear();
     }
     const auto initial = config;
-    acquisition_ = std::jthread([this, promise, initial, id, module](std::stop_token token) {
+    acquisition_ = std::jthread([this, promise, initial, id, module, device_module,
+                                 device_key](std::stop_token token) {
         bool announced = false;
         try {
             auto actual = initial;
-            std::unique_ptr<sdr::Source> source =
-                module ? std::make_unique<PluginSource>(module, actual)
-                       : sdr::open_source(id, actual);
+            std::unique_ptr<sdr::Source> source;
+            if (device_module)
+                source = std::make_unique<sdr::DeviceSource>(device_module, device_key, actual);
+            else if (module)
+                source = std::make_unique<PluginSource>(module, actual);
+            else
+                source = sdr::open_source(id, actual);
             promise->set_value(actual);
             announced = true;
             auto deadline = std::chrono::steady_clock::now();
@@ -246,6 +317,10 @@ void Engine::start(const std::string &id, sdr::Config requested) {
     current_.overflows = 0;
     current_.sample_rate = config.sample_rate;
     current_.center_hz = config.center_hz;
+    current_.gain = config.gain;
+    current_.ppm = config.ppm;
+    current_.bias_t = config.bias_t;
+    current_.direct_sampling = config.direct_sampling;
     current_.running = true;
     current_.state = "Streaming";
     event("rx.start", QString::fromStdString(id));

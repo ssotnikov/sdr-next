@@ -4,7 +4,7 @@
 
 C++20, CMake ≥3.22, Qt **6.10.0** Core/Gui/Qml/Quick/QuickControls2/Multimedia. Согласованная матрица — ADR-013. Qt задаётся через `CMAKE_PREFIX_PATH`, без машинных путей в tracked presets. Скачать SDK можно официальным Qt installer или aqtinstall; download/build caches находятся вне репозитория.
 
-SoapySDR headers ABI 0.8 обнаруживаются через `CMAKE_PREFIX_PATH`/`SDR_SOAPY_INCLUDE_DIR`. Runtime загружается по C ABI во время работы; драйверы устанавливаются отдельно. `SDR_ENABLE_SOAPY=OFF` исключает аппаратный адаптер. Для MSVC runtime/SDK требуется согласованный MSVC 2022. Локальная MinGW-сборка — дополнительное свидетельство, не замена MSVC gate.
+SoapySDR headers ABI 0.8 обнаруживаются через `CMAKE_PREFIX_PATH`/`SDR_SOAPY_INCLUDE_DIR` только при сборке optional модулей устройств. Runtime загружается внутри модулей по C ABI; драйверы устанавливаются отдельно. `SDR_ENABLE_SOAPY=OFF` или отсутствие SDK исключает три Soapy provider из сборки, сохраняя хост, software RX и SDK-пример. Core/GUI не содержат Soapy-кода и списка семейств. Для MSVC runtime/SDK требуется согласованный MSVC 2022; MSVC 2026 проверен дополнительно. Локальная MinGW-сборка — дополнительное свидетельство, не замена MSVC gate.
 
 ## Ручная установка или дополнение MSVC
 
@@ -49,7 +49,15 @@ build/desktop/bin/sdr_app --smoke-test
 
 `sdr_settings_tests` проверяет восстановление значений и сохранность повреждённого/неподдерживаемого JSON. `sdr_ui_tests` запускает настоящий Main.qml, RX synthetic, несколько кадров spectrum/waterfall, zoom, темы, RU/EN и перестановку панели. Он использует offscreen из Qt SDK; такой backend не заявляется частью Windows runtime-поставки.
 
+Модули устройств собираются в `bin/devices`: отдельные HackRF/RTL-SDR/Airspy DLL/SO и manifest. Хост сканирует только `devices` рядом с executable. `sdr_device_tests` проверяет SDK и отрицательные ABI fixtures, `sdr_provider_engine_tests` — discovery, отсутствие модулей, локальные ошибки, actual config и stop/remove/re-add. `SDR_TEST_HACKRF=1` включает физический HackRF-сценарий QML; без устройства его не следует выдавать за выполненный.
+
+Последняя сборка модулей: `build/windows-device-msvc2026`, MSVC 2026, 7/7 CTest. `cmake/MsvcDependencies.cmake` определяет фактический байтовый префикс локализованного `/showIncludes` для Ninja; тест `msvc-dependencies` изменяет header и проверяет пересборку зависимого объекта. В старом `build/windows-msvc2026` был обнаружен некорректный префикс и устаревшие объекты: для нового кода используется свежая папка сборки.
+
 Переносимый пакет: `./scripts/package-windows.ps1 -QtRoot <Qt SDK> -BuildDirectory build/desktop -OutputDirectory dist/<new-name>`. Проверка с очищенным developer PATH: `./scripts/smoke-windows.ps1 -PackageDirectory dist/<new-name>`. `Start-SDR.cmd` явно выбирает Windows platform plugin; `qt.conf` закрепляет относительные пути. Внешний Soapy runtime задаётся `SDR_SOAPY_RUNTIME` (папка с SoapySDR.dll и зависимостями). Не устанавливайте `QT_QPA_PLATFORM=offscreen` для пользовательского пакета: он поставляет `windows`, а offscreen используется только в SDK-тестах.
+
+Для пакета без аппаратных модулей добавьте `-WithoutDeviceModules`. Для проверки фактического software RX используйте `smoke-windows.ps1 -ReceiveSynthetic`: native Windows GUI обрабатывает минимум 2.4 M IQ и обновляет спектр, затем завершается; это отдельная проверка от длительной/audio приёмки. SDK device-пример помещается в `examples/device`, без автозагрузки.
+
+Независимая сборка нового provider без Qt и Soapy: `cmake -S plugins/device-example -B build/device-sdk-independent -G Ninja -DCMAKE_BUILD_TYPE=Release`, затем `cmake --build build/device-sdk-independent`. Установите полученные manifest и библиотеку в applicationDir/devices и обновите список при остановленном RX. Подробный контракт — [Device Provider API](sdr/DEVICE_PLUGIN_API.md).
 
 ## Linux GUI в контейнере
 
@@ -64,10 +72,12 @@ PowerShell bind mount: `-v D:/Projects/sdr-app:/src`. Контейнер Ubuntu 
 
 ```sh
 build/core/bin/sdr_bench --rate 2400000 --seconds 1 --mode WFM --write-iq build/tone.cf32
-build/desktop/bin/sdr_bench --device soapy:driver=hackrf --rate 2400000 --seconds 10 --mode WFM
+build/desktop/bin/sdr_bench --module build/desktop/bin/devices/sdr_device_hackrf.dll --rate 2400000 --seconds 10 --mode WFM
 ```
 
 Первый вызов создаёт контрольный IQ 1 kHz и metadata; генерация определена формулами в `core/src/source.cpp`, чужие IQ-наборы не включаются. Второй использует реальный HackRF. Для 10/20 MSPS повторите с соответствующим rate; сохраняйте stdout/stderr вместе с описанием среды. Измеряемый throughput включает генерацию или ожидание hardware; это не CPU-only benchmark DSP и не прохождение критериев GUI/audio/burn-in.
+
+В Linux имя библиотеки — `sdr_device_hackrf.so`. Без `--device` выбирается первый экземпляр явно указанного модуля; `--device <raw-key>` выбирает конкретный. Прежний самостоятельный аргумент `--device soapy:...` заменён `--module`; сохранённые GUI ID мигрируют отдельно, только при однозначном совпадении.
 
 Максимальная длительность headless прогона — 28800 секунд. Если он выполняется без GUI/аудиоустройства, его результат не заменяет согласованный восьмичасовой end-to-end тест.
 

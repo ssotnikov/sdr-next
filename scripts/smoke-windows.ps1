@@ -1,9 +1,9 @@
-param([Parameter(Mandatory)][string]$PackageDirectory)
+param([Parameter(Mandatory)][string]$PackageDirectory,[switch]$ReceiveSynthetic)
 $ErrorActionPreference = 'Stop'
 $package = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $start = [Diagnostics.ProcessStartInfo]::new()
 $start.FileName = Join-Path $package 'sdr_app.exe'
-$start.Arguments = '--smoke-test'
+$start.Arguments = if($ReceiveSynthetic){'--smoke-rx'}else{'--smoke-test'}
 $start.WorkingDirectory = $package
 $start.UseShellExecute = $false
 $start.CreateNoWindow = $true
@@ -23,5 +23,9 @@ if (-not $process.WaitForExit(45000)) {
 }
 $message = $errors.GetAwaiter().GetResult()
 if ($process.ExitCode -ne 0) { throw "Packaged GUI failed ($($process.ExitCode)): $message" }
-Write-Output 'Packaged GUI opened and closed without developer PATH (exit 0). RX/audio/endurance are separate checks.'
+if($ReceiveSynthetic) {
+    Write-Output 'Packaged GUI processed synthetic IQ and updated spectrum without developer PATH (exit 0). Hardware/audio quality/endurance are separate checks.'
+} else {
+    Write-Output 'Packaged GUI opened and closed without developer PATH (exit 0). RX/audio/endurance are separate checks.'
+}
 if ($message) { Write-Output $message }

@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$QtRoot,
     [string]$BuildDirectory = 'build/desktop',
-    [string]$OutputDirectory = 'dist/sdr-app-0.1-preview-win64'
+    [string]$OutputDirectory = 'dist/sdr-app-0.1-preview-win64',
+    [switch]$WithoutDeviceModules
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -15,6 +16,9 @@ $exe = Join-Path $binaryFolder 'sdr_app.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw 'Build sdr_app first.' }
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 Copy-Item -LiteralPath $exe -Destination $outputPath
+if(-not $WithoutDeviceModules -and (Test-Path -LiteralPath (Join-Path $binaryFolder 'devices'))) {
+    Copy-Item -LiteralPath (Join-Path $binaryFolder 'devices') -Destination (Join-Path $outputPath 'devices') -Recurse
+}
 [IO.File]::WriteAllText((Join-Path $outputPath 'qt.conf'), "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml`n")
 & (Join-Path $qtPath 'bin/windeployqt.exe') --release --qmldir (Join-Path $projectRoot 'app') --dir $outputPath --no-translations --no-ffmpeg --skip-plugin-types multimedia (Join-Path $outputPath 'sdr_app.exe')
 if ($LASTEXITCODE) { throw 'Qt deployment failed; the partial package is not ready.' }
@@ -58,6 +62,9 @@ New-Item -ItemType Directory -Path $exampleOutput -Force | Out-Null
 foreach ($name in @('sdr_source_example.dll','sdr_demod_example.dll','source-example.json','demod-example.json')) {
     $example = Join-Path $binaryFolder $name
     if (Test-Path -LiteralPath $example) { Copy-Item -LiteralPath $example -Destination $exampleOutput }
+}
+if (Test-Path -LiteralPath (Join-Path $binaryFolder 'examples-device')) {
+    Copy-Item -LiteralPath (Join-Path $binaryFolder 'examples-device') -Destination (Join-Path $exampleOutput 'device') -Recurse
 }
 $files = Get-ChildItem -LiteralPath $outputPath -File -Recurse | ForEach-Object {
     [ordered]@{path=[IO.Path]::GetRelativePath($outputPath,$_.FullName);bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}

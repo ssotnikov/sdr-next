@@ -28,16 +28,29 @@ ApplicationWindow {
     property color muted: dark ? "#9baeb8" : "#4a626f"
     property var device: receiver.devices.length > sourceBox.currentIndex && sourceBox.currentIndex >= 0 ? receiver.devices[sourceBox.currentIndex] : ({})
     function tr(ru, en) { return language === "ru" ? ru : en }
+    function sourceIndex(saved, devices) {
+        for (let i=0; i<devices.length; ++i) if (devices[i].id === saved) return i
+        if (!saved.startsWith("soapy:")) return -1
+        let match = -1
+        for (let i=0; i<devices.length; ++i) {
+            const id = String(devices[i].id)
+            if (id.startsWith("device:") && id.endsWith(":" + saved.substring(6))) {
+                if (match >= 0) return -1
+                match = i
+            }
+        }
+        return match
+    }
     function restoreSource() {
         if(sourceRestored || receiver.devices.length === 0) return
         const saved = receiver.settings.sourceId || "synthetic"
-        sourceBox.currentIndex = -1
-        for(let i=0; i<receiver.devices.length; ++i) if(receiver.devices[i].id === saved) sourceBox.currentIndex = i
+        sourceBox.currentIndex = sourceIndex(saved, receiver.devices)
         sourceRestored = true
     }
     function parameters() {
         return {centerMHz: Number(frequency.text), rate: Number(rate.editText), offsetKHz: Number(offset.text),
-            gain: Number(gain.value), ppm: Number(ppm.text), biasT: bias.checked, directSampling: direct.currentIndex,
+            gain: window.device.gain ? Number(gain.value) : 0, ppm: window.device.ppm ? Number(ppm.text) : 0,
+            biasT: (window.device.biasT || false) && bias.checked, directSampling: window.device.directSampling ? direct.currentIndex : 0,
             squelch: squelch.value, mode: mode.currentText, file: filePath}
     }
     function start() { receiver.start(sourceBox.currentIndex, parameters()) }
@@ -98,7 +111,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 190
                     font.pixelSize: 23
                     font.family: Qt.platform.os === "windows" ? "Cascadia Mono" : "Monospace"
-                    validator: DoubleValidator { bottom: 0; top: 6000; locale: "C" }
+                    validator: DoubleValidator { bottom: Number(window.device.minHz || 0)/1e6; top: Number(window.device.maxHz || 6000000000)/1e6; locale: "C" }
                     onAccepted: if(receiver.status.running) window.start()
                     Accessible.name: tr("Частота в МГц", "Frequency in MHz")
                 }
@@ -160,12 +173,13 @@ ApplicationWindow {
                                 Accessible.name: tr("Скорость IQ", "IQ sample rate")
                             }
                             Label { text: tr("Усиление", "Gain") + "   " + gain.value.toFixed(0) + " dB"; color: muted }
-                            Slider { id: gain; Layout.fillWidth: true; from: Number(window.device.minGain || 0); to: Math.max(from+1, Number(window.device.maxGain || 76)); value: receiver.settings.gain === undefined ? 20 : Number(receiver.settings.gain); enabled: window.device.gain || false; Accessible.name: tr("Усиление", "Gain") }
+                            Slider { id: gain; Layout.fillWidth: true; from: Number(window.device.minGain || 0); to: window.device.gain ? Number(window.device.maxGain) : 76; value: receiver.settings.gain === undefined ? 20 : Number(receiver.settings.gain); enabled: window.device.gain || false; Accessible.name: tr("Усиление", "Gain") }
+                            Label { visible: receiver.status.running && (window.device.gain || false); text: tr("Применено: ", "Applied: ") + Number(receiver.status.gain || 0).toFixed(1) + " dB"; color: muted }
                             Label { text: tr("Частотная коррекция, ppm", "Frequency correction, ppm"); color: muted }
-                            TextField { id: ppm; text: receiver.settings.ppm || "0"; enabled: window.device.ppm || false; Layout.fillWidth: true; validator: DoubleValidator { locale: "C" } }
-                            CheckBox { id: bias; text: "Bias-T"; checked: receiver.settings.biasT || false; enabled: window.device.biasT || false }
+                            TextField { id: ppm; objectName: "ppmSetting"; text: receiver.settings.ppm || "0"; enabled: window.device.ppm || false; Layout.fillWidth: true; validator: DoubleValidator { locale: "C" } }
+                            CheckBox { id: bias; objectName: "biasSetting"; text: "Bias-T"; checked: receiver.settings.biasT || false; enabled: window.device.biasT || false }
                             Label { text: "Direct sampling"; enabled: window.device.directSampling || false; color: muted }
-                            ComboBox { id: direct; model: [tr("Выключено", "Off"),"I","Q"]; currentIndex: Number(receiver.settings.directSampling || 0); enabled: window.device.directSampling || false; Layout.fillWidth: true }
+                            ComboBox { id: direct; objectName: "directSetting"; model: [tr("Выключено", "Off"),"I","Q"]; currentIndex: Number(receiver.settings.directSampling || 0); enabled: window.device.directSampling || false; Layout.fillWidth: true }
                             Rectangle { height: 1; color: muted; opacity: 0.25; Layout.fillWidth: true; Layout.topMargin: 10 }
                             Label { text: tr("Расширения", "Extensions"); font.weight: Font.DemiBold }
                             Label { text: tr("Включайте только проверенные модули. Они работают внутри приложения.", "Enable trusted modules only. They run inside the application."); wrapMode: Text.WordWrap; Layout.fillWidth: true; color: muted }

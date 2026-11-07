@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.22)
+project(sdr_device_example LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+find_package(Threads REQUIRED)
+set(SDR_SDK_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/../../sdk/include" CACHE PATH "SDR SDK headers")
+add_library(sdr_device_example SHARED device.cpp)
+target_include_directories(sdr_device_example PRIVATE "${SDR_SDK_INCLUDE}")
+target_link_libraries(sdr_device_example PRIVATE Threads::Threads)
+set_target_properties(sdr_device_example PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples-device" LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples-device")
+file(GENERATE OUTPUT "$<TARGET_FILE_DIR:sdr_device_example>/example-device.json" CONTENT
+"{\"id\":\"org.sdr.example.device\",\"version\":\"0.1.0\",\"api_major\":1,\"api_minor\":0,\"kind\":\"device\",\"platform\":\"${CMAKE_SYSTEM_NAME}\",\"arch\":\"x86_64\",\"license\":\"MIT\",\"library\":\"$<TARGET_FILE_NAME:sdr_device_example>\"}")

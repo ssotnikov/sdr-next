@@ -26,9 +26,11 @@ namespace soapy {
     X(SoapySDRDevice_getFrequency) \
     X(SoapySDRDevice_listGains) \
     X(SoapySDRDevice_setGain) \
+    X(SoapySDRDevice_getGain) \
     X(SoapySDRDevice_getGainRange) \
     X(SoapySDRDevice_hasFrequencyCorrection) \
     X(SoapySDRDevice_setFrequencyCorrection) \
+    X(SoapySDRDevice_getFrequencyCorrection) \
     X(SoapySDRDevice_getSettingInfo) \
     X(SoapySDRDevice_writeSetting) \
     X(SoapySDRDevice_setupStream) \

@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | Собственное ядро, GUI, SDK | sdr-app | 0.1.0 | CMake, C++20 | MIT, LICENSE |
 | Qt Core/Gui/Qml/Quick/QuickControls2/Multimedia | Qt Project | 6.10.0 | Динамический SDK; Linux-compatible сборка из исходников | Проверить LICENSES/third-party каждого фактически поставленного модуля, сохранить LGPL/permissive notices и требования замены библиотек |
-| SoapySDR | pothosware/SoapySDR | ABI 0.8; проверен Radioconda 0.8.1 py312hd5eb7cc_5 | Внешние headers через find_path; runtime по C ABI; vcpkg manifest для чистой сборки | BSL-1.0 upstream, лицензии заголовков и фактической библиотеки сверять при упаковке |
+| SoapySDR | pothosware/SoapySDR | ABI 0.8; проверен Radioconda 0.8.1 py312hd5eb7cc_5 | Только optional Device Provider модули: внешние headers через find_path, runtime по C ABI. Core/GUI не зависят от SDK/runtime | BSL-1.0 upstream, лицензии заголовков и фактической библиотеки сверять при упаковке |
 | Аппаратные Soapy-модули | upstream RTL-SDR/HackRF/Airspy | Предоставленная пользователем версия | Внешние установленные драйверы, не копируются автоматически в пакет | Отдельная проверка лицензий каждого модуля/USB SDK; не считать GPL-драйверы частью MIT приложения |
 | CMake | Kitware | 3.22 minimum, локальный Windows 3.31.6 | Build only | BSD-3-Clause; build tools не входят в runtime-пакет |
 | Ninja | ninja-build / Kitware package | 1.13.0.git.kitware.jobserver-pipe-1 | Build only | Apache-2.0; исполняемые build tools не поставляются |
