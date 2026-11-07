@@ -1,0 +1,24 @@
+name: build
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [windows-2022, ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build/core -DSDR_BUILD_GUI=OFF -DSDR_ENABLE_SOAPY=OFF
+      - run: cmake --build build/core --config Release --parallel 2
+      - run: ctest --test-dir build/core -C Release --output-on-failure
+  desktop-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sdr-qt -f ci/Dockerfile.qt .
+      - run: >-
+          docker run --rm -v "$PWD:/src" sdr-qt sh -c
+          'cmake -S . -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+          cmake --build build/gui --parallel 2 &&
+          ctest --test-dir build/gui --output-on-failure &&
+          xvfb-run -a build/gui/bin/sdr_app --smoke-test'

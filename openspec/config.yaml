@@ -6,7 +6,10 @@ context: |
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
   Project root: D:/Projects/sdr-app.
   Read docs/sdr/SDR_Architecture_Baseline_1.0.md and docs/sdr/OPEN_DECISIONS.md for SDR scope.
-  Preserve accepted ADR-001 through ADR-012; O-001 through O-020 remain open until explicit user approval.
+  Preserve ADR-001 through ADR-012 and read subsequent ADRs for current decision status.
+  User approved O-001 and delegated technical decisions on 2026-11-07; record them in docs/sdr/.
+  User separately approved the reference laptop and performance/DSP criteria in ADR-015.
+  Full hardware coverage remains open; unverified acceptance gates must not be reported as passed.
   Keep architecture decisions in docs/sdr/ and link them from OpenSpec changes.
   This is a greenfield C++20 / Qt Quick project, desktop Windows and Linux first.
 

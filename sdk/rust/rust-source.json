@@ -1,0 +1,1 @@
+{"id":"org.sdr.example.rust-source","name":"Rust tone source","version":"0.1.0","api_major":1,"api_minor":0,"kind":"source","platform":"Linux","arch":"x86_64","license":"MIT","library":"libsdr_plugin_api.so"}

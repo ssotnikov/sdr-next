@@ -1,0 +1,9 @@
+.git
+build
+out
+dist
+release
+recordings
+.cache
+.env
+.env.*

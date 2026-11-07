@@ -1,0 +1,13 @@
+{
+  "name": "sdr-app",
+  "version-semver": "0.1.0",
+  "builtin-baseline": "6fdd23fa0a9479a9f9a1c48178696f60cf39255d",
+  "description": "Desktop SDR receiver; Qt 6.10.0 is provided by a separate pinned SDK",
+  "dependencies": [],
+  "features": {
+    "hardware": {
+      "description": "Local SoapySDR hardware adapter (device modules installed separately)",
+      "dependencies": [{"name": "soapysdr", "version>=": "0.8.1"}]
+    }
+  }
+}
