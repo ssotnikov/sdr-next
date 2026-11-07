@@ -6,6 +6,22 @@ C++20, CMake ≥3.22, Qt **6.10.0** Core/Gui/Qml/Quick/QuickControls2/Multimedia
 
 SoapySDR headers ABI 0.8 обнаруживаются через `CMAKE_PREFIX_PATH`/`SDR_SOAPY_INCLUDE_DIR`. Runtime загружается по C ABI во время работы; драйверы устанавливаются отдельно. `SDR_ENABLE_SOAPY=OFF` исключает аппаратный адаптер. Для MSVC runtime/SDK требуется согласованный MSVC 2022. Локальная MinGW-сборка — дополнительное свидетельство, не замена MSVC gate.
 
+## Ручная установка или дополнение MSVC
+
+Проверено 2026-11-07: на текущем компьютере уже доступны Build Tools 2022 17.14.40, toolset v143 в каталоге 14.44.35207, компилятор MSVC 19.44.35228.0 и Windows SDK 10.0.22621.0. С ними приложение собрано и проверено; дополнительная установка не потребовалась. У Visual Studio Professional 2026 отдельно обнаружены cl/link 14.51.36231, но отсутствуют include/vector и lib/x64/libcmt.lib в этом toolset. Наличие IDE и cl.exe само по себе не подтверждает полный C++ toolchain.
+
+Если нужно установить или восстановить инструменты вручную:
+
+1. Откройте **Visual Studio Installer** из меню «Пуск» либо **Tools → Get Tools and Features** в Visual Studio.
+2. Для согласованного toolchain проекта выберите **Visual Studio Build Tools 2022 → Modify / Изменить**.
+3. Отметьте **Desktop development with C++ / Разработка классических приложений на C++**.
+4. В **Individual components / Отдельные компоненты** проверьте **MSVC v143 — VS 2022 C++ x64/x86 build tools** и **Windows 11 SDK 10.0.22621.0** или совместимый установленный SDK. Для CMake-проекта также нужны CMake/Ninja; можно выбрать **C++ CMake tools for Windows** либо использовать отдельные установленные инструменты.
+5. Примените изменения, затем откройте новую **Developer PowerShell for VS 2022** для x64. Обычный PowerShell не обязан находить cl.exe до загрузки developer environment; `scripts/build.ps1` загружает его самостоятельно.
+
+Чтобы дополнить саму IDE 2026, выбирайте её запись в Installer и C++ workload с x64/x86 MSVC и Windows SDK. Это отдельная установка; обновление последнего toolset IDE не меняет автоматически согласованный компилятор проекта. `scripts/build.ps1` выбирает VS 2022 через vswhere, поэтому установленную IDE 2026 можно сохранить.
+
+Источники: [изменение состава Visual Studio](https://learn.microsoft.com/en-us/visualstudio/install/modify-visual-studio?view=visualstudio), [выбор версии MSVC](https://learn.microsoft.com/en-us/cpp/overview/acquire-msvc?view=msvc-170).
+
 ## Headless (Qt не требуется)
 
 ```sh

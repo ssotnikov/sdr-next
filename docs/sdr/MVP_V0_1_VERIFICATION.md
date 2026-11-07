@@ -14,7 +14,7 @@ Headless `core/` не зависит от Qt. `app/` содержит QML/contro
 
 | Проверка | Фактический результат / граница свидетельства |
 |---|---|
-| Windows native | Windows 11 build 26300, Qt 6.10.0, MinGW 13.1; CMake 3.31.6, Ninja 1.13.0.git.kitware.jobserver-pipe-1. Сборка и четыре CTest suite: core/settings/engine/qml. MinGW — preview, не замена согласованного MSVC 2022 |
+| Windows native | Windows 11 build 26300; повторная проверка с Qt 6.10.0 msvc2022_64 и MSVC 19.44.35228.0/v143, Build Tools 2022 17.14.40, SDK 10.0.22621.0: сборка и CTest 4/4. CMake 3.31.6, Ninja 1.13.0.git.kitware.jobserver-pipe-1. Ранее отдельно прошёл MinGW 13.1 preview |
 | Эталон | Ryzen 5 4600H, 16 GB, AMD iGPU driver 31.0.21925.1001, AC, Balanced. Эталон согласован; полноценный performance-прогон ещё не выполнен |
 | DSP | FFT 2048/Hann: правильный bin, −6.0206 dBFS для амплитуды 0.5 с ошибкой <0.05 dB. AM/NFM/WFM: 1 kHz, offset 12 kHz, Fs 240 k/1 M/2.4 MSPS; частота 1000 Hz, корреляция 0.9974…1.0000 после 50 ms. Контрольное AM подавление +200 kHz при Fs 2.4 MSPS: 50.54 dB. Это минимальные принятые тесты, не полная RF-характеристика |
 | Core | Bounded queue/order/threaded transfer, ограниченное ожидание/timeout/stop; WAV header/count, CF32 round-trip/EOF/truncation, ABI mismatch и lifetime. Вызов Rust DLL из C++ host прошёл |
@@ -25,6 +25,10 @@ Headless `core/` не зависит от Qt. `app/` содержит QML/contro
 | Linux core | Ранее в этом change прошли Ubuntu 22.04/WSL, GCC 11.4 и headless CTest. После последних изменений повторный запуск WSL блокирован `Wsl/Service/CreateInstance/ERROR_TIMEOUT`; это не pass финальной ревизии |
 | Linux GUI | Ранее собран Qt 6.10/Ubuntu 24.04 container, core+engine 2/2. Первоначальный X11 smoke выявил отсутствие libxcb-shape.so.0; Dockerfile дополнен. Финальный GUI/QML прогон не выполнен: Docker Desktop затем перестал запускать daemon |
 | Переносимый Windows пакет | `scripts/package-windows.ps1` + `scripts/smoke-windows.ps1`; запуск/закрытие окна с developer PATH, исключённым из окружения. `qt.conf`, явный Windows plugin в launcher, отдельные SDK examples, notices, Qt SBOM и SHA-256 inventory. Это не чистая VM и не финальный лицензионный аудит |
+
+Повторный MSVC-пакет: локальный `dist/sdr-app-0.1-preview-msvc2022-win64`, `Start-SDR-HackRF.cmd` использует уже установленный внешний Soapy runtime. SHA-256 sdr_app.exe: `7B539D3002E09B84C38349A9A3E4259549EEE26E450B847C674B9788087C78BB`; binary в пакете совпадает с результатом сборки. MSVC/QML физический HackRF-тест: 6,553,600 IQ samples, 41 FFT кадр, IQ gaps/overflow/audio drops/underrun/backend underrun — 0. Runtime VC++ уже доступен на этом компьютере; windeployqt включил vc_redist.x64.exe для возможных prerequisites других машин, его установка не запускалась.
+
+После MSVC-сборки визуально проверено настоящее окно пользовательского пакета: читаемые элементы управления, выбор источников с обнаруженным HackRF, запуск synthetic RX, обновляемые спектр и waterfall, остановка в Ready; видимые IQ gaps/audio underrun — 0. Это локальная визуальная проверка, не ручное прослушивание, не вся DPI/backend matrix и не восьмичасовой тест. Выбор HackRF для реального RX отдельно проверен автоматическим QML-сценарием; визуальный RX использовал synthetic.
 
 Сырые локальные журналы находятся в игнорируемом `build/`, двоичные пакеты в игнорируемом `dist/`; они не коммитятся. Команды повторения — в Developer Guide. Для устройств в отчёт не включается серийный номер.
 
@@ -47,7 +51,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 
 | ID | Статус | Свидетельство / что осталось |
 |---|---|---|
-| F-001 | blocked | Windows MinGW preview; MSVC 2022, Windows 10, Debian 12 и полная Linux GUI matrix не проверены |
+| F-001 | partial/blocked | Windows 11/MSVC 2022 build/tests/package/visual pass; Windows 10, Debian 12 и полная Linux GUI matrix не проверены |
 | F-002 | partial/blocked | HackRF короткий RX; нет RTL-SDR/Airspy, всей OS/device matrix |
 | F-003 | partial | CF32/metadata/EOF round-trip пройден; повторить финальную ревизию Linux |
 | F-004 | partial | Capability UI, rate/center readback, gain/unsupported checks в коде; полный аппаратный tune/gain/options/unplug протокол не выполнен |
@@ -111,10 +115,10 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 
 ## Что требуется для G6
 
-1. Рабочий MSVC 2022 и утверждённые Windows/Linux окружения; финальные Linux build/QML/audio, X11/Wayland/HiDPI, USB permissions и Ubuntu 22.04 portable build.
+1. Оставшиеся утверждённые Windows/Linux окружения: Windows 10, финальные Linux build/QML/audio, X11/Wayland/HiDPI, USB permissions и Ubuntu 22.04 portable build. MSVC 2022 на Windows 11 теперь проверен.
 2. RTL-SDR и Airspy с конкретными моделями/драйверами; полная аппаратная tune/gain/options/unplug/reopen matrix, включая HackRF.
 3. Восьмичасовой профиль 2.4 MSPS с GUI/audio/recording и сырыми метриками CPU/RAM/new frames/UI p95/audio latency/drops. Короткие результаты выше не доказывают SLO.
 4. Негативные SDK/init/lifecycle и storage fault-injection сценарии, ручное прослушивание на обеих ОС, полный restart/layout/DPI protocol.
 5. Портативные пакеты на чистых машинах, завершённый аудит фактических зависимостей и notices, повторный OpenSpec verify. После этого — синхронизация спецификаций и archive.
 
-Установка Microsoft Build Tools была отклонена автоматической проверкой исполнения с ответом `blocked by policy`; подробная причина не предоставлена. Обход запрета не выполнялся. Docker/WSL startup errors не исправлялись разрушительными действиями с пользовательскими средами.
+Историческая попытка установки Microsoft Build Tools была отклонена автоматической проверкой исполнения (`blocked by policy`, без подробной причины). При повторной проверке уже установленный полный MSVC 2022 найден и использован без установки; прежний отказ больше не блокирует эту Windows-сборку. Docker/WSL startup errors не исправлялись разрушительными действиями с пользовательскими средами.
