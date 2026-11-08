@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QCoreApplication::setOrganizationName("sdr-app");
     QCoreApplication::setApplicationName("sdr-app");
+    QGuiApplication::setApplicationDisplayName("SDR Next");
     QCoreApplication::setApplicationVersion("0.1.0");
 #ifdef Q_OS_WIN
     if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND"))

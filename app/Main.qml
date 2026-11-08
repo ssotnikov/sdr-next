@@ -11,7 +11,7 @@ ApplicationWindow {
     height: Math.max(650, Number(receiver.settings.windowHeight || 820))
     minimumWidth: 1000
     minimumHeight: 650
-    title: "SDR • 0.1"
+    title: Qt.application.displayName + " • 0.1"
     property string language: receiver.settings.language || "ru"
     property int theme: Number(receiver.settings.theme || 0)
     property bool dark: theme === 0 || (theme === 2 && Qt.styleHints.colorScheme === Qt.Dark)

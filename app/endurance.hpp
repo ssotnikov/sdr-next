@@ -220,7 +220,8 @@ class Endurance final : public QObject {
         if (storage.bytesAvailable() < static_cast<qint64>(seconds * 96000 + 1073741824) ||
             !metrics_.open(QIODevice::WriteOnly | QIODevice::NewOnly))
             throw std::runtime_error("Insufficient disk space or cannot create metrics file");
-        window->setTitle("SDR endurance - 2.4 MSPS / WFM / WAV");
+        window->setTitle(QGuiApplication::applicationDisplayName() +
+                         " endurance - 2.4 MSPS / WFM / WAV");
 #ifdef Q_OS_WIN
         if (!SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED))
             throw std::runtime_error("Cannot prevent automatic standby during test");

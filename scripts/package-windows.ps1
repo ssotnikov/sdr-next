@@ -54,7 +54,7 @@ set "QT_QPA_PLATFORM=windows"
 set "QT_QPA_PLATFORM_PLUGIN_PATH=%~dp0platforms"
 set "QT_MEDIA_BACKEND=windows"
 if defined SDR_SOAPY_RUNTIME set "PATH=%SDR_SOAPY_RUNTIME%;%PATH%"
-start "SDR" "%~dp0sdr_app.exe"
+start "SDR Next" "%~dp0sdr_app.exe"
 '@
 [IO.File]::WriteAllText((Join-Path $outputPath 'Start-SDR.cmd'),$launcher)
 $exampleOutput = Join-Path $outputPath 'examples'
