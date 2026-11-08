@@ -117,19 +117,33 @@ class Endurance final : public QObject {
         } else
             complete_ = false;
     }
+    void finish() {
+        summary(complete_ ? "duration_completed" : "failed");
+        finished_ = true;
+        timer_.stop();
+        probe_.request_stop();
+#ifdef Q_OS_WIN
+        SetThreadExecutionState(ES_CONTINUOUS);
+#endif
+        if (complete_) {
+            QCoreApplication::quit();
+        } else {
+            if (failure_.isEmpty())
+                failure_ = "Endurance report could not be finalized";
+            receiver_.reportTestFailure("Endurance FAILED: " + failure_);
+            if (auto *window = qobject_cast<QQuickWindow *>(parent()))
+                window->setTitle(QGuiApplication::applicationDisplayName() + " - Endurance FAILED");
+        }
+    }
     void tick() {
         auto status = receiver_.status();
         if (stopping_) {
             if (!status["running"].toBool() && !status["recording"].toBool()) {
-                summary(complete_ ? "duration_completed" : "failed");
-                finished_ = true;
-                QCoreApplication::exit(complete_ ? 0 : 2);
+                finish();
             } else if (interval_.elapsed() > 15000) {
                 failure_ = "Stop did not complete within 15 seconds";
                 complete_ = false;
-                summary("failed");
-                finished_ = true;
-                QCoreApplication::exit(2);
+                finish();
             }
             return;
         }
@@ -203,9 +217,15 @@ class Endurance final : public QObject {
         row["status"] = QJsonObject::fromVariantMap(status);
         last_status_ = status;
         append(row);
-        if (!status["running"].toBool() || !status["recording"].toBool() ||
-            status["rate"].toDouble() != 2400000 || ac_lost_) {
-            failure_ = "RX/recording stopped, sample rate changed or AC disconnected";
+        if (!status["running"].toBool())
+            failure_ = "RX stopped before requested duration; state=" + status["state"].toString();
+        else if (!status["recording"].toBool())
+            failure_ = "Recording stopped before requested duration";
+        else if (status["rate"].toDouble() != 2400000)
+            failure_ = "Actual sample rate changed during test";
+        else if (ac_lost_)
+            failure_ = "AC power disconnected during test";
+        if (!failure_.isEmpty()) {
             stop(false);
         } else if (elapsed_ >= seconds_)
             stop(true);

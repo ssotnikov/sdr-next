@@ -67,11 +67,28 @@ $process = [Diagnostics.Process]::Start($start)
 $errors = $process.StandardError.ReadToEndAsync()
 $state = @{pid=$process.Id;state='running';launched_utc=[DateTimeOffset]::UtcNow.ToString('o');run_directory=$runPath}
 [IO.File]::WriteAllText((Join-Path $runPath 'process.json'), ($state | ConvertTo-Json))
-$process.WaitForExit()
+$summaryPath = Join-Path $runPath 'session/summary.json'
+while (-not $process.WaitForExit(1000)) {
+    if (Test-Path -LiteralPath $summaryPath) {
+        try {
+            $result = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+            if ($result.state -eq 'failed' -and $state.state -ne 'failed_window_open') {
+                $state.state = 'failed_window_open'
+                $state.test_exit_code = 2
+                [IO.File]::WriteAllText((Join-Path $runPath 'process.json'), ($state | ConvertTo-Json))
+            }
+        } catch { } # A summary may still be in the process of being written.
+    }
+}
 [IO.File]::WriteAllText((Join-Path $runPath 'stderr.log'), $errors.GetAwaiter().GetResult())
 $state.state = 'exited'
 $state.exit_code = $process.ExitCode
+$state.test_exit_code = $process.ExitCode
+if (Test-Path -LiteralPath $summaryPath) {
+    $result = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+    if ($result.state -ne 'duration_completed') { $state.test_exit_code = 2 }
+}
 $state.finished_utc = [DateTimeOffset]::UtcNow.ToString('o')
 [IO.File]::WriteAllText((Join-Path $runPath 'process.json'), ($state | ConvertTo-Json))
 Write-Output "Endurance process exited $($process.ExitCode); report: $runPath"
-exit $process.ExitCode
+exit $state.test_exit_code

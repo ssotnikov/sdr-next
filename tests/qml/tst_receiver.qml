@@ -14,6 +14,19 @@ TestCase {
     }
     function cleanupTestCase() { receiver.stop(); appWindow.close(); appWindow.destroy() }
     function cleanup() { receiver.stop(); tryVerify(function() { return !receiver.status.running }, 10000) }
+    function test_endurance_controls_locked() {
+        try {
+            appWindow.enduranceActive = true
+            compare(findChild(appWindow, "rxSpaceShortcut").enabled, false)
+            compare(findChild(appWindow, "rxEscapeShortcut").enabled, false)
+            compare(findChild(appWindow, "rxButton").enabled, false)
+            compare(findChild(appWindow, "controlPanel").enabled, false)
+        } finally {
+            appWindow.enduranceActive = false
+        }
+        compare(findChild(appWindow, "rxSpaceShortcut").enabled, true)
+        compare(findChild(appWindow, "rxEscapeShortcut").autoRepeat, false)
+    }
     function test_receiver_and_workspace() {
         const sources = findChild(appWindow, "sourceSelector")
         const rate = findChild(appWindow, "rateSelector")

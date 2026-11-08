@@ -12,6 +12,7 @@ ApplicationWindow {
     minimumWidth: 1000
     minimumHeight: 650
     title: Qt.application.displayName + " • 0.1"
+    property bool enduranceActive: Qt.application.arguments.indexOf("--endurance-dir") >= 0
     property string language: receiver.settings.language || "ru"
     property int theme: Number(receiver.settings.theme || 0)
     property bool dark: theme === 0 || (theme === 2 && Qt.styleHints.colorScheme === Qt.Dark)
@@ -79,11 +80,12 @@ ApplicationWindow {
         workspaceReady = true
     }
 
-    Shortcut { sequence: "Space"; onActivated: receiver.status.running ? receiver.stop() : window.start() }
-    Shortcut { sequence: "Ctrl+O"; onActivated: iqFile.open() }
-    Shortcut { sequence: "Escape"; onActivated: receiver.stop() }
+    Shortcut { objectName: "rxSpaceShortcut"; sequence: "Space"; autoRepeat: false; enabled: !window.enduranceActive; onActivated: receiver.status.running ? receiver.stop() : window.start() }
+    Shortcut { sequence: "Ctrl+O"; enabled: !window.enduranceActive; onActivated: iqFile.open() }
+    Shortcut { objectName: "rxEscapeShortcut"; sequence: "Escape"; autoRepeat: false; enabled: !window.enduranceActive; onActivated: receiver.stop() }
 
     header: Rectangle {
+        enabled: !window.enduranceActive
         height: 100
         color: surface
         ColumnLayout {
@@ -135,6 +137,7 @@ ApplicationWindow {
         Rectangle {
             id: side
             objectName: "controlPanel"
+            enabled: !window.enduranceActive
             color: surface
             SplitView.preferredWidth: Number(receiver.settings.panelWidth || 270)
             SplitView.minimumWidth: 255

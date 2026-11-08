@@ -45,6 +45,7 @@ class Controller final : public QObject {
     Q_INVOKABLE void setAudio(int, double);
     Q_INVOKABLE void saveSettings(const QVariantMap &);
     Q_INVOKABLE void exportDiagnostics(const QString &);
+    void reportTestFailure(const QString &message) { ui_error_ = message; }
   signals:
     void changed();
     void devicesChanged();
