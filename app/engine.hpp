@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QStringList>
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <map>
 #include <mutex>
@@ -51,6 +52,8 @@ struct Snapshot {
     std::size_t queue_depth = 0;
     double max_source_read_ms = 0, max_enqueue_wait_ms = 0, max_dsp_ms = 0;
     double max_record_write_ms = 0, max_worker_gap_ms = 0, max_publish_ms = 0;
+    double max_spectrum_ms = 0, max_audio_push_ms = 0, max_block_ms = 0;
+    std::uint64_t idle_waits = 0;
 };
 class Engine {
   public:
@@ -75,6 +78,9 @@ class Engine {
     sdr::BoundedQueue<std::shared_ptr<const sdr::Block>> iq_{8};
     std::jthread worker_, acquisition_;
     std::mutex snapshot_mutex_, failure_mutex_;
+    std::mutex wake_mutex_;
+    std::condition_variable_any wake_;
+    std::atomic<std::uint64_t> work_revision_{0};
     Snapshot snapshot_, current_;
     QString acquisition_failure_;
     std::atomic<bool> acquisition_done_{false};
@@ -103,4 +109,5 @@ class Engine {
     void publish();
     void event(const QString &, const QString &);
     void metadata(bool);
+    void notify_work();
 };

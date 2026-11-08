@@ -18,6 +18,7 @@
 - [Протокол длительного RX](RX_ENDURANCE_PROTOCOL.md), [текущий восьмичасовой прогон](RX_ENDURANCE_RUN_2026-11-08.md).
 - [Разбор первого прогона](RX_ENDURANCE_RETRY_ANALYSIS.md), [повторный тест с диагностикой](RX_ENDURANCE_RETRY_RUN_2026-11-08.md).
 - [Текущий тест с защищённым управлением](RX_ENDURANCE_GUARDED_RUN_2026-11-08.md).
+- [ADR-019: пробуждение RX worker](ADR-019-rx-worker-wakeup.md), [проверка изменения](RX_WORKER_WAKEUP_VERIFICATION.md).
 - [DSP API](DSP_API.md), [Plugin SDK](PLUGIN_SDK.md), [зависимости](DEPENDENCIES.md), [проверка реализации](MVP_V0_1_VERIFICATION.md).
 
 ## Происхождение и полнота

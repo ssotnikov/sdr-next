@@ -111,7 +111,17 @@ Engine::~Engine() {
         worker_.join();
 }
 bool Engine::post(std::function<void()> command) {
-    return commands_.push(std::move(command));
+    if (!commands_.push(std::move(command)))
+        return false;
+    notify_work();
+    return true;
+}
+void Engine::notify_work() {
+    {
+        std::lock_guard lock(wake_mutex_);
+        ++work_revision_;
+    }
+    wake_.notify_one();
 }
 Snapshot Engine::snapshot() {
     std::lock_guard lock(snapshot_mutex_);
@@ -266,6 +276,7 @@ void Engine::start(const std::string &id, sdr::Config requested) {
     max_source_read_ms_ = max_enqueue_wait_ms_ = 0;
     current_.max_source_read_ms = current_.max_enqueue_wait_ms = current_.max_dsp_ms = 0;
     current_.max_record_write_ms = current_.max_worker_gap_ms = current_.max_publish_ms = 0;
+    current_.max_spectrum_ms = current_.max_audio_push_ms = current_.max_block_ms = 0;
     last_block_time_ = {};
     {
         std::lock_guard lock(failure_mutex_);
@@ -317,6 +328,7 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                     throw std::runtime_error(
                         "IQ queue overflow: processing/storage cannot keep up; RX stopped");
                 }
+                notify_work();
                 if (source->paced()) {
                     // Allow ordinary timer jitter, but cap catch-up after a long scheduler stall.
                     deadline = std::max(deadline, std::chrono::steady_clock::now() -
@@ -343,6 +355,7 @@ void Engine::start(const std::string &id, sdr::Config requested) {
             }
         }
         acquisition_done_ = true;
+        notify_work();
     });
     try {
         config = ready.get();
@@ -527,6 +540,7 @@ void Engine::unload_plugins() {
 }
 void Engine::run(std::stop_token token) {
     while (!token.stop_requested()) {
+        const auto observed_revision = work_revision_.load();
         bool worked = false;
         try {
             while (auto command = commands_.pop()) {
@@ -575,7 +589,11 @@ void Engine::run(std::stop_token token) {
                     current_.max_dsp_ms =
                         std::max(current_.max_dsp_ms,
                                  milliseconds(std::chrono::steady_clock::now() - dsp_began));
+                    const auto push_began = std::chrono::steady_clock::now();
                     audio_.push(audio_block_);
+                    current_.max_audio_push_ms =
+                        std::max(current_.max_audio_push_ms,
+                                 milliseconds(std::chrono::steady_clock::now() - push_began));
                     if (current_.recording) {
                         const auto record_began = std::chrono::steady_clock::now();
                         try {
@@ -598,13 +616,18 @@ void Engine::run(std::stop_token token) {
                     current_.iq_samples += b.samples.size();
                     current_.power_db = demod_.power_db();
                     if (began - frame_time_ >= std::chrono::milliseconds(50)) {
+                        const auto spectrum_began = std::chrono::steady_clock::now();
                         current_.spectrum = sdr::spectrum(b.samples);
+                        current_.max_spectrum_ms = std::max(
+                            current_.max_spectrum_ms,
+                            milliseconds(std::chrono::steady_clock::now() - spectrum_began));
                         ++current_.frame;
                         frame_time_ = began;
                     }
                     current_.processing_ms = std::chrono::duration<double, std::milli>(
                                                  std::chrono::steady_clock::now() - began)
                                                  .count();
+                    current_.max_block_ms = std::max(current_.max_block_ms, current_.processing_ms);
                 } else if (acquisition_done_) {
                     stop();
                     current_.state = "Ready";
@@ -625,9 +648,15 @@ void Engine::run(std::stop_token token) {
             current_.error = message;
             event("error", message);
         }
-        publish();
         if (!worked)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            ++current_.idle_waits;
+        publish();
+        if (!worked) {
+            std::unique_lock lock(wake_mutex_);
+            wake_.wait(lock, token, [this, observed_revision] {
+                return work_revision_.load() != observed_revision;
+            });
+        }
     }
     try {
         stop();

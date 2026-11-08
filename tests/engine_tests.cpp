@@ -52,6 +52,19 @@ int main(int argc, char **argv) {
         check(audio.drops() == 1, "Stop preserves diagnostic counters");
         audio.clear();
         check(audio.drops() == 0, "New session resets diagnostic counters");
+        {
+            AudioBuffer idle_audio;
+            Engine idle(idle_audio, folder.filePath("no-device-modules"));
+            wait([&] { return idle.snapshot().devices.size() == 2; },
+                 "Idle software sources ready");
+            const auto before = idle.snapshot().idle_waits;
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            check(idle.snapshot().idle_waits <= before + 2,
+                  "Idle worker must not poll periodically without commands or IQ");
+            std::atomic<bool> command_ran = false;
+            check(idle.post([&] { command_ran = true; }), "Idle command accepted");
+            wait([&] { return command_ran.load(); }, "Command wakes idle worker");
+        }
         Engine engine(audio);
         wait([&] { return engine.snapshot().devices.size() >= 2; }, "Source enumeration");
         sdr::Config config;
