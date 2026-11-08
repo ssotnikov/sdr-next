@@ -2,9 +2,11 @@
 #include "endurance.hpp"
 #include "spectrum_item.hpp"
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QSize>
 #include <QTimer>
 
 int main(int argc, char **argv) {
@@ -13,6 +15,12 @@ int main(int argc, char **argv) {
     QCoreApplication::setApplicationName("sdr-app");
     QGuiApplication::setApplicationDisplayName("SDR Next");
     QCoreApplication::setApplicationVersion("0.1.0");
+    QIcon application_icon;
+    const int icon_sizes[]{16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512};
+    for (const int size : icon_sizes)
+        application_icon.addFile(QStringLiteral(":/icons/sdrnext-%1.png").arg(size),
+                                 QSize(size, size));
+    QGuiApplication::setWindowIcon(application_icon);
 #ifdef Q_OS_WIN
     if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND"))
         qputenv("QT_MEDIA_BACKEND", "windows");

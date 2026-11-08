@@ -5,6 +5,7 @@
 ## Материалы
 
 - [ADR-018: название программы SDR Next](ADR-018-product-name.md).
+- [Подключение пользовательской иконки](PRODUCT_ICON_INTEGRATION.md).
 
 - [План реализации MVP v0.1](MVP_V0_1_IMPLEMENTATION_PLAN.md) — предлагаемая последовательность G0–G6, критерии и зависимости от открытых решений; [изменение OpenSpec](../../openspec/changes/plan-mvp-v0-1/proposal.md).
 - [Полные исходные требования пользователя](USER_REQUIREMENTS_ORIGINAL.md) — дословный текст заполненного опросника, 14 разделов.
