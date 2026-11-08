@@ -47,3 +47,5 @@
 - [План custom appearance profiles](ADR-022-custom-appearance-profiles.md), [контракт и этапы](APPEARANCE_PROFILES.md), [JSON Schema](appearance-resource-v1.schema.json), [примеры](examples/appearance/README.md). Реализация запланирована.
 
 - [Предложения дополнений MVP по UI SDR#](SDRSHARP_MVP_FEATURE_REVIEW.md) — анализ, не утверждённое расширение.
+
+- [Фиксированное получение зависимостей](ADR-023-pinned-dependency-acquisition.md), [протокол проверки](DEPENDENCY_ACQUISITION_VERIFICATION.md).

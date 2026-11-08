@@ -139,3 +139,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 ## Дополнение: независимые модули устройств
 
 Последующее изменение ADR-017 заменило встроенный Soapy-адаптер независимыми Device Provider модулями. Текущие результаты и покрытие — в [DEVICE_PROVIDER_VERIFICATION.md](DEVICE_PROVIDER_VERIFICATION.md). MSVC 2026: 7/7 CTest, физический HackRF через отдельную DLL, оба Windows пакета (с модулями и без) выполняют synthetic RX. Предыдущие результаты ниже остаются историческими; ограничения полной приёмки и 27/54 задач родительского MVP сохраняются. RTL-SDR/Airspy не объявлены проверенными.
+
+## Дополнение: G0 / получение зависимостей
+
+Pins, bootstrap и локальное исправление Linux packaging SoapySDR выполнены по ADR-023. [Протокол](DEPENDENCY_ACQUISITION_VERIFICATION.md): SDK producer, независимый CMake consumer и headless SDR Next проверены на Windows/MSVC 2026 и Ubuntu 22.04/GCC 11. MSVC 2022 сейчас не обнаружен; задача 1.4 сохраняет открытый статус до проверки согласованной среды. Это не новая GUI, аппаратная или G6 приёмка; общий прогресс остаётся 27/54.

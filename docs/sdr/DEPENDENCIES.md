@@ -26,3 +26,7 @@
 ## Шрифты интерфейса
 
 IBM Plex Sans (Regular, Medium, SemiBold) и IBM Plex Mono (Regular, Medium) — неизменённые TTF из пользовательского brand book, upstream IBM. SHA-256: assets/fonts/README.md. Лицензия SIL OFL 1.1: assets/fonts/OFL.txt; CMake install поставляет её в licenses/IBM-Plex. Точные версии доступны во встроенной metadata файлов.
+
+## Pins и получение
+
+[ADR-023](ADR-023-pinned-dependency-acquisition.md) фиксирует source lock Qt 6.10.0 и vcpkg commit; `vcpkg.json` задаёт SoapySDR 0.8.1#1 override (локальное исправление Linux packaging, исходники библиотеки те же 0.8.1). Bootstrap-инструмент vcpkg определяется metadata того же commit (2026-10-29), а portfile проверяет исходный архив SoapySDR по SHA-512. Команды получения — в [Developer Guide](../DEVELOPER_GUIDE.md); [протокол](DEPENDENCY_ACQUISITION_VERIFICATION.md) различает получение, сборку SDK и полную приёмку. Новых runtime-драйверов и сторонних DSP-библиотек не добавлено.

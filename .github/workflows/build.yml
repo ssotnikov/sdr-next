@@ -8,6 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - run: python tests/test_dependency_acquisition.py
       - run: cmake -S . -B build/core -DSDR_BUILD_GUI=OFF -DSDR_ENABLE_SOAPY=OFF
       - run: cmake --build build/core --config Release --parallel 2
       - run: ctest --test-dir build/core -C Release --output-on-failure

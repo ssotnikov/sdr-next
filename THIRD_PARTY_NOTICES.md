@@ -18,6 +18,8 @@ SoapySDR 0.8 is an external runtime accessed through its public C API; upstream:
 
 The Qt SDK, CMake, Ninja, Cargo/Rust, and build environments are not included in the executable package. When MinGW is used, its runtime components are distributed under their own terms, including applicable runtime exceptions; the presence and text of these terms are checked for each specific preview build.
 
+The source repository includes a modified SoapySDR vcpkg port recipe derived from microsoft/vcpkg, copyright Microsoft Corporation, under the MIT license. See cmake/vcpkg-ports/soapysdr/LICENSE.txt. This recipe license does not replace the SoapySDR library's BSL-1.0 license.
+
 ## Status
 
 This notice does not indicate that the audit is complete. The final G6 gate requires checking the actual binary dependencies, all applicable notices, and license texts. `package-manifest.json` contains filenames, sizes, and SHA-256 hashes, but does not by itself replace a complete SBOM covering licenses and dependencies.

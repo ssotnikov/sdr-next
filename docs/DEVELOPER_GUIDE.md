@@ -86,3 +86,57 @@ build/desktop/bin/sdr_bench --module build/desktop/bin/devices/sdr_device_hackrf
 Рабочий change: `plan-mvp-v0-1`. Отмечать задачу только после полного выполнения её условий. Проверка: `openspec validate plan-mvp-v0-1 --strict`. Непроверенные ОС, драйверы и performance остаются blocked, даже если код собран. Архивирование — после реализации и фактической приёмки, не после создания файлов.
 
 Соглашения коммитов/атрибуции — CONTRIBUTING.md и AGENTS.md. Generated binaries, локальные настройки, recordings и caches в Git не включаются.
+
+## Фиксированное получение зависимостей (G0, задача 1.4)
+
+Машиночитаемые pins: `dependencies.lock.json` и `vcpkg.json`; решение — [ADR-023](sdr/ADR-023-pinned-dependency-acquisition.md). `vcpkg-configuration.json` подключает локальный port SoapySDR 0.8.1#1: он исправляет Linux-путь CMake package, сохраняя архив upstream 0.8.1. Скрипт требует Python 3.10+, Git и сеть. Для `--hardware` дополнительно нужны C++ toolchain, CMake, Ninja и системные build prerequisites. Кеши и SDK размещаются **вне** checkout, в постоянной папке (не `/tmp` для WSL). Скрипт не устанавливает компилятор, драйверы устройств и готовый Qt SDK.
+
+Windows x86-64, Developer PowerShell for VS 2022:
+
+```powershell
+python scripts/fetch-dependencies.py --root D:/Tools/sdr-deps --qt-source --hardware
+./scripts/build.ps1 -QtRoot D:/Tools/Qt/6.10.0/msvc2022_64 -SoapySdkPrefix D:/Tools/sdr-deps/installed/x64-windows -BuildDirectory build/pinned-windows
+```
+
+`QtRoot` — уже собранный SDK ровно Qt 6.10.0 (официальный msvc2022_64 либо сборка из полученных исходников). Если CMake/Ninja установлены отдельно, добавьте их в PATH. Bootstrap предпочитает MSVC 2022 через vswhere; если его нет, явно сообщает о дополнительном профиле MSVC 2026. Это не заменяет согласованный MSVC 2022; штатный `build.ps1` по-прежнему требует 2022. Директория dependency root должна быть выделенной: скрипт не удаляет чужие данные и отклоняет изменённый checkout.
+
+Ubuntu 22.04/GCC 11 (системные prerequisites устанавливаются администратором):
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential cmake ninja-build git python3 curl zip unzip tar pkg-config
+env PATH=/usr/local/bin:/usr/bin:/bin python3 scripts/fetch-dependencies.py --root /opt/sdr-deps --qt-source --hardware
+```
+
+Выберите доступную для записи внешнюю папку вместо `/opt/sdr-deps`, если нет прав. Команда задаёт PATH только для своего процесса: в WSL это исключает медленный поиск Linux-программ среди унаследованных Windows-каталогов и случайный выбор Windows-инструментов. Глобальные настройки WSL не меняются. При нестандартной установке добавьте каталоги ваших Linux-инструментов в этот PATH. Linux-профиль — `x64-linux-dynamic`, поскольку port SoapySDR не поддерживает статическую сборку. После получения SDK Soapy находится в `installed/<triplet>/include`; runtime — отдельно в `bin` (Windows) или `lib` (Linux). Приложение динамически загружает SoapySDR из provider; драйверы SoapyHackRF/RTLSDR/Airspy нужно устанавливать отдельно, этот bootstrap их не получает и не подменяет действующее окружение RX.
+
+### Qt 6.10.0 из исходников
+
+`--qt-source` получает superproject и пять модулей ровно по commit/gitlinks из lock. Это **исходники**, не установленный Qt. Сборочные и графические prerequisites зависят от ОС; их отсутствие должно быть устранено до configure Qt. На Ubuntu потребуются, в частности, dev-пакеты OpenGL/EGL/X11/XCB/xkbcommon/fontconfig и аудио backend. Wayland и другие дополнительные backend требуют своих dev-пакетов и отдельной квалификации. Наличие source tree не означает прохождения этих проверок.
+
+Пример out-of-source сборки (в Developer PowerShell MSVC либо Linux shell; замените пути):
+
+```sh
+cmake -S /opt/sdr-deps/qt-source -B /opt/sdr-deps/qt-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/sdr-deps/qt-sdk -DBUILD_SHARED_LIBS=ON -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF -DQT_FEATURE_ffmpeg=OFF
+cmake --build /opt/sdr-deps/qt-build --parallel 2
+cmake --install /opt/sdr-deps/qt-build
+cmake -S . -B build/pinned-linux -G Ninja -DCMAKE_BUILD_TYPE=Release '-DCMAKE_PREFIX_PATH=/opt/sdr-deps/qt-sdk;/opt/sdr-deps/installed/x64-linux-dynamic'
+cmake --build build/pinned-linux --parallel 2
+ctest --test-dir build/pinned-linux --output-on-failure
+```
+
+Для общей Linux-поставки Qt собирается на Ubuntu 22.04 по ADR-013. Текущий CI-контейнер Ubuntu 24.04 с готовым Qt 6.10.0 остаётся дополнительной средой тестов; он не заменяет эту portable-сборку. В контейнере SoapySDR теперь получается через тот же manifest/baseline, без `libsoapysdr-dev` из apt.
+
+Проверка получения и ограничения: [DEPENDENCY_ACQUISITION_VERIFICATION.md](sdr/DEPENDENCY_ACQUISITION_VERIFICATION.md). Обновление pins выполняется отдельным изменением с проверкой состава зависимостей; совпадение версии API 0.8 не разрешает автоматически обновлять runtime или аппаратные драйверы.
+
+### Проверка полученного SDK
+
+Независимый consumer в `tests/dependency-sdk` проверяет не только заголовки, но и импортированный CMake target, линковку, загрузку библиотеки, release 0.8.1 и ABI 0.8:
+
+```sh
+cmake -S tests/dependency-sdk -B build/dependency-sdk -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/sdr-deps/installed/x64-linux-dynamic
+cmake --build build/dependency-sdk
+ctest --test-dir build/dependency-sdk --output-on-failure
+```
+
+На Windows выполните команды в Developer PowerShell, замените prefix на `installed/x64-windows` и добавьте его `bin` в PATH для загрузки DLL тестом. Upstream добавляет build-info к версии библиотеки, поэтому consumer использует `find_package(SoapySDR 0.8.1 CONFIG REQUIRED)` и отдельно проверяет release/ABI через C API, вместо несовместимого с суффиксом `EXACT 0.8.1`.

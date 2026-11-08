@@ -6,8 +6,9 @@
   "dependencies": [],
   "features": {
     "hardware": {
-      "description": "Local SoapySDR hardware adapter (device modules installed separately)",
+      "description": "Optional SoapySDR device provider modules (hardware drivers installed separately)",
       "dependencies": [{"name": "soapysdr", "version>=": "0.8.1"}]
     }
-  }
+  },
+  "overrides": [{"name": "soapysdr", "version": "0.8.1", "port-version": 1}]
 }

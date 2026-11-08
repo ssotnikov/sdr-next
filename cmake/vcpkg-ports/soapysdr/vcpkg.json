@@ -1,0 +1,13 @@
+{
+  "name": "soapysdr",
+  "version": "0.8.1",
+  "port-version": 1,
+  "description": "Vendor and platform neutral SDR interface library; Linux CMake packaging fix",
+  "homepage": "https://github.com/pothosware/SoapySDR/wiki",
+  "license": "BSL-1.0",
+  "supports": "!uwp & !static",
+  "dependencies": [
+    {"name": "vcpkg-cmake", "host": true},
+    {"name": "vcpkg-cmake-config", "host": true}
+  ]
+}

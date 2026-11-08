@@ -1,16 +1,20 @@
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake ninja-build python3-venv ca-certificates \
+    build-essential cmake ninja-build python3-venv ca-certificates git curl zip unzip tar pkg-config \
     libgl1-mesa-dev libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0 \
     libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
     libasound2t64 libpulse0 libdbus-1-3 libfontconfig1 libvulkan1 libicu74 \
-    xvfb xauth libsoapysdr-dev && rm -rf /var/lib/apt/lists/*
+    xvfb xauth && rm -rf /var/lib/apt/lists/*
+COPY dependencies.lock.json vcpkg.json vcpkg-configuration.json /opt/sdr-bootstrap/
+COPY cmake/vcpkg-ports /opt/sdr-bootstrap/cmake/vcpkg-ports
+COPY scripts/fetch-dependencies.py /opt/sdr-bootstrap/scripts/fetch-dependencies.py
+RUN python3 /opt/sdr-bootstrap/scripts/fetch-dependencies.py --root /opt/sdr-deps --hardware
 RUN python3 -m venv /opt/tools && /opt/tools/bin/pip install aqtinstall==3.3.0 && \
     /opt/tools/bin/python -m aqt install-qt linux desktop 6.10.0 linux_gcc_64 \
       -O /opt/Qt -m qtmultimedia --timeout 600 -b https://ftp.fau.de/qtproject
-ENV CMAKE_PREFIX_PATH=/opt/Qt/6.10.0/gcc_64
-ENV LD_LIBRARY_PATH=/opt/Qt/6.10.0/gcc_64/lib
+ENV CMAKE_PREFIX_PATH=/opt/Qt/6.10.0/gcc_64:/opt/sdr-deps/installed/x64-linux-dynamic
+ENV LD_LIBRARY_PATH=/opt/Qt/6.10.0/gcc_64/lib:/opt/sdr-deps/installed/x64-linux-dynamic/lib
 ENV QT_PLUGIN_PATH=/opt/Qt/6.10.0/gcc_64/plugins
 ENV QML_IMPORT_PATH=/opt/Qt/6.10.0/gcc_64/qml
 ENV QT_QUICK_BACKEND=software
