@@ -22,3 +22,7 @@
 3. Формировать инвентарь/SBOM и LICENSE/NOTICE для конкретного пакета. Не включать драйверы, Qt tools, debug output и непроверенные плагины простым рекурсивным копированием окружения разработчика.
 4. Хранить build/install/download caches вне tracked-файлов. Непроверенные условия распространения блокируют окончательный G6.
 5. При изменении зависимостей повторять аудит затронутых компонентов. Собственная MIT-лицензия не меняет лицензии Qt или внешних SDR-драйверов.
+
+## Шрифты интерфейса
+
+IBM Plex Sans (Regular, Medium, SemiBold) и IBM Plex Mono (Regular, Medium) — неизменённые TTF из пользовательского brand book, upstream IBM. SHA-256: assets/fonts/README.md. Лицензия SIL OFL 1.1: assets/fonts/OFL.txt; CMake install поставляет её в licenses/IBM-Plex. Точные версии доступны во встроенной metadata файлов.

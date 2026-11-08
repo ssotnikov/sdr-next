@@ -21,3 +21,7 @@ Qt SDK, CMake, Ninja, Cargo/Rust и сборочные окружения не �
 ## Статус
 
 Это уведомление не является отметкой завершённого аудита. Финальный G6 требует сверки фактических бинарных зависимостей, всех применимых notices и лицензионных текстов. `package-manifest.json` содержит имена/размеры/SHA-256 файлов, но сам по себе не заменяет полный SBOM с лицензиями и зависимостями.
+
+## IBM Plex fonts
+
+The application embeds unmodified IBM Plex Sans (Regular, Medium, SemiBold) and IBM Plex Mono (Regular, Medium) fonts. Copyright and SIL Open Font License 1.1: see assets/fonts/OFL.txt in source distributions and licenses/IBM-Plex/OFL.txt in application packages. Font filenames and SHA-256 identifiers are listed in assets/fonts/README.md.

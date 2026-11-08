@@ -17,8 +17,24 @@ qt_add_resources(sdr_app application_icons
   BASE "${PROJECT_SOURCE_DIR}/assets/icon/png"
   FILES ${sdr_icon_files})
 target_link_libraries(sdr_app PRIVATE sdr_core Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia)
-qt_add_qml_module(sdr_app URI SDR VERSION 1.0 QML_FILES Main.qml)
+qt_add_qml_module(sdr_app URI SDR VERSION 1.0 QML_FILES Main.qml BrandTheme.qml BrandTokens.js)
 if(MSVC)
   target_compile_options(sdr_app PRIVATE /utf-8 /W4)
 endif()
 install(TARGETS sdr_app RUNTIME DESTINATION bin)
+
+# Shared by the receiver and its QML integration tests; fonts travel with the executable.
+function(sdr_add_brand_fonts target)
+  qt_add_resources(${target} brand_fonts
+    PREFIX "/fonts"
+    BASE "${PROJECT_SOURCE_DIR}/assets/fonts"
+    FILES
+      "${PROJECT_SOURCE_DIR}/assets/fonts/IBMPlexSans-Regular.ttf"
+      "${PROJECT_SOURCE_DIR}/assets/fonts/IBMPlexSans-Medium.ttf"
+      "${PROJECT_SOURCE_DIR}/assets/fonts/IBMPlexSans-SemiBold.ttf"
+      "${PROJECT_SOURCE_DIR}/assets/fonts/IBMPlexMono-Regular.ttf"
+      "${PROJECT_SOURCE_DIR}/assets/fonts/IBMPlexMono-Medium.ttf")
+endfunction()
+sdr_add_brand_fonts(sdr_app)
+install(FILES "${PROJECT_SOURCE_DIR}/assets/fonts/OFL.txt"
+  DESTINATION licenses/IBM-Plex)

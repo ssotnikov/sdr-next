@@ -32,6 +32,8 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $outputPa
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD_PARTY_NOTICES.md') -Destination $outputPath
 Copy-Item -LiteralPath (Join-Path $projectRoot 'docs/USER_GUIDE.md') -Destination $outputPath
 New-Item -ItemType Directory -Path (Join-Path $outputPath 'licenses') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $outputPath 'licenses/IBM-Plex') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $projectRoot 'assets/fonts/OFL.txt') -Destination (Join-Path $outputPath 'licenses/IBM-Plex/OFL.txt')
 if (Test-Path -LiteralPath (Join-Path $projectRoot 'third_party/licenses')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'third_party/licenses') -Destination (Join-Path $outputPath 'licenses/upstream') -Recurse
 }

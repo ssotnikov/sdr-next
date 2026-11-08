@@ -14,6 +14,60 @@ TestCase {
     }
     function cleanupTestCase() { receiver.stop(); appWindow.close(); appWindow.destroy() }
     function cleanup() { receiver.stop(); tryVerify(function() { return !receiver.status.running }, 10000) }
+    function test_brand_theme() {
+        const brand = findChild(appWindow, "brandTheme")
+        verify(brand !== null)
+        tryVerify(function() { return brand.fontsReady })
+        verify(brand.sans.indexOf("IBM Plex Sans") >= 0)
+        verify(brand.mono.indexOf("IBM Plex Mono") >= 0)
+        compare(appWindow.font.pixelSize, 13)
+        const frequency = findChild(appWindow, "frequencyField")
+        compare(frequency.font.pixelSize, 32)
+        verify(frequency.width >= frequency.contentWidth + frequency.leftPadding + frequency.rightPadding)
+        compare(findChild(appWindow, "rxButton").height, 28)
+        for (const name of ["themeSelector", "languageSelector"]) {
+            const selector = findChild(appWindow, name)
+            verify(selector.width >= selector.contentItem.contentWidth + selector.leftPadding + selector.rightPadding,
+                name + " displays its selected text")
+        }
+        const spectrum = findChild(appWindow, "spectrum")
+        const previousMap = spectrum.colorMap
+        spectrum.colorMap = 2
+        compare(spectrum.waterfallColor(0), "#0a0d10")
+        compare(spectrum.waterfallColor(1), "#fff4e0")
+        compare(spectrum.waterfallColor(0.4), "#0f6b8e")
+        appWindow.theme = 0
+        compare(appWindow.base, "#0a0d10")
+        compare(spectrum.traceColor, "#8fd8ff")
+        compare(brand.colors.traceFill, "#338fd8ff")
+        appWindow.theme = 1
+        compare(appWindow.base, "#f4f6f8")
+        compare(appWindow.ink, "#0e141a")
+        compare(spectrum.traceColor, "#0b5f8a")
+        const hint = findChild(appWindow, "emptySpectrumHint")
+        verify(hint.y + hint.height < spectrum.height * 0.36, "Idle hint stays on the theme surface")
+        compare(brand.colors.traceFill, "#260b5f8a")
+        appWindow.theme = 0
+        spectrum.colorMap = previousMap
+        const button = findChild(appWindow, "rxButton")
+        button.forceActiveFocus(Qt.TabFocusReason)
+        tryCompare(button, "visualFocus", true)
+        verify(button.background.children[0].visible)
+    }
+    function test_brand_minimum_window() {
+        const oldWidth = appWindow.width
+        const oldHeight = appWindow.height
+        appWindow.width = 1000
+        appWindow.height = 650
+        wait(100)
+        const rx = findChild(appWindow, "rxButton")
+        const frequency = findChild(appWindow, "frequencyField")
+        const point = rx.mapToItem(appWindow.contentItem, rx.width, 0)
+        verify(point.x <= appWindow.width, "Tuning controls fit the minimum window")
+        verify(frequency.width >= frequency.contentWidth + frequency.leftPadding + frequency.rightPadding)
+        appWindow.width = oldWidth
+        appWindow.height = oldHeight
+    }
     function test_endurance_controls_locked() {
         try {
             appWindow.enduranceActive = true

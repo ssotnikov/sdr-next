@@ -9,7 +9,7 @@
 
 SpectrumItem::SpectrumItem(QQuickItem *parent) : QQuickItem(parent) {
     setFlag(ItemHasContents, true);
-    history_.fill(QColor("#101c2c"));
+    history_.fill(QColor("#0a0d10"));
 }
 void SpectrumItem::setSpan(double v) {
     v = std::clamp(v, 0.02, 1.0);
@@ -29,9 +29,62 @@ void SpectrumItem::setPosition(double v) {
     update();
 }
 void SpectrumItem::setColorMap(int v) {
+    v = std::clamp(v, 0, 2);
+    if (color_map_ == v)
+        return;
     color_map_ = v;
+    history_.fill(QColor("#0a0d10"));
+    dirty_ = true;
     emit viewChanged();
     update();
+}
+void SpectrumItem::setTraceColor(const QColor &color) {
+    if (!color.isValid() || trace_color_ == color)
+        return;
+    trace_color_ = color;
+    emit viewChanged();
+    update();
+}
+void SpectrumItem::setWaterfallStops(const QVariantList &stops) {
+    if (stops == waterfall_stops_ || stops.size() < 2 || stops.size() > 64)
+        return;
+    QList<std::pair<double, QColor>> parsed;
+    for (const auto &stop : stops) {
+        const auto map = stop.toMap();
+        bool ok = false;
+        const double pos = map.value("pos").toDouble(&ok);
+        const QColor color(map.value("color").toString());
+        if (!ok || !std::isfinite(pos) || pos < 0 || pos > 1 || !color.isValid() ||
+            (!parsed.isEmpty() && pos <= parsed.back().first))
+            return;
+        parsed.append({pos, color});
+    }
+    if (parsed.front().first != 0 || parsed.back().first != 1)
+        return;
+    waterfall_stops_ = stops;
+    waterfall_lut_.resize(256);
+    int segment = 1;
+    for (int i = 0; i < 256; ++i) {
+        const double level = i / 255.0;
+        while (segment < parsed.size() - 1 && level > parsed[segment].first)
+            ++segment;
+        const auto &[lo, a] = parsed[segment - 1];
+        const auto &[hi, b] = parsed[segment];
+        const double f = (level - lo) / (hi - lo);
+        const auto channel = [f](int x, int y) { return qRound(x + (y - x) * f); };
+        waterfall_lut_[i] = qRgb(channel(a.red(), b.red()), channel(a.green(), b.green()),
+                                 channel(a.blue(), b.blue()));
+    }
+    emit viewChanged();
+    update();
+}
+QColor SpectrumItem::waterfallColor(double level) const {
+    level = std::isfinite(level) ? std::clamp(level, 0.0, 1.0) : 0.0;
+    if (color_map_ == 2 && !waterfall_lut_.isEmpty())
+        return QColor::fromRgb(waterfall_lut_[qRound(level * 255)]);
+    if (color_map_ == 1)
+        return QColor::fromRgbF(level, level * 0.75, level * 0.25);
+    return QColor::fromHsvF(0.68 - 0.55 * level, 0.8, 0.08 + 0.92 * level);
 }
 void SpectrumItem::setFrame(const QList<float> &frame) {
     if (frame.size() != 2048)
@@ -42,12 +95,7 @@ void SpectrumItem::setFrame(const QList<float> &frame) {
     auto *row = reinterpret_cast<QRgb *>(history_.scanLine(0));
     for (int i = 0; i < history_.width(); ++i) {
         const double level = std::clamp((frame[i] + 110) / 95.0, 0.0, 1.0);
-        QColor color;
-        if (color_map_ == 1)
-            color = QColor::fromRgbF(level, level * 0.75, level * 0.25);
-        else
-            color = QColor::fromHsvF(0.68 - 0.55 * level, 0.8, 0.08 + 0.92 * level);
-        row[i] = color.rgb();
+        row[i] = waterfallColor(level).rgb();
     }
     dirty_ = true;
     update();
@@ -65,7 +113,7 @@ QSGNode *SpectrumItem::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
         line->setGeometry(geometry);
         line->setFlag(QSGNode::OwnsGeometry);
         auto *material = new QSGFlatColorMaterial;
-        material->setColor(QColor("#7ee4e0"));
+        material->setColor(trace_color_);
         line->setMaterial(material);
         line->setFlag(QSGNode::OwnsMaterial);
         root->appendChildNode(line);
@@ -89,6 +137,8 @@ QSGNode *SpectrumItem::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
     texture->setSourceRect((position_ - span_ / 2) * history_.width(), 0, span_ * history_.width(),
                            history_.height());
     auto *line = static_cast<QSGGeometryNode *>(root->lastChild());
+    static_cast<QSGFlatColorMaterial *>(line->material())->setColor(trace_color_);
+    line->markDirty(QSGNode::DirtyMaterial);
     auto *points = line->geometry()->vertexDataAsPoint2D();
     for (int i = 0; i < 2048; ++i) {
         const auto bin = std::clamp(
