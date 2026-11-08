@@ -7,6 +7,7 @@ import SDR.Native 1.0
 ApplicationWindow {
     id: window
     visible: true
+    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
     width: Math.max(1000, Number(receiver.settings.windowWidth || 1320))
     height: Math.max(650, Number(receiver.settings.windowHeight || 820))
     minimumWidth: 1000
@@ -160,11 +161,110 @@ ApplicationWindow {
         workspaceReady = true
     }
 
-    Shortcut { objectName: "rxSpaceShortcut"; sequence: "Space"; autoRepeat: false; enabled: !window.enduranceActive; onActivated: receiver.status.running ? receiver.stop() : window.start() }
-    Shortcut { sequence: "Ctrl+O"; enabled: !window.enduranceActive; onActivated: iqFile.open() }
-    Shortcut { objectName: "rxEscapeShortcut"; sequence: "Escape"; autoRepeat: false; enabled: !window.enduranceActive; onActivated: receiver.stop() }
+    Shortcut { objectName: "rxSpaceShortcut"; sequence: "Space"; autoRepeat: false; enabled: !window.enduranceActive && !mainMenu.visible && !aboutDialog.visible; onActivated: receiver.status.running ? receiver.stop() : window.start() }
+    Shortcut { sequence: "Ctrl+O"; enabled: !window.enduranceActive && !mainMenu.visible && !aboutDialog.visible; onActivated: iqFile.open() }
+    Shortcut { objectName: "rxEscapeShortcut"; sequence: "Escape"; autoRepeat: false; enabled: !window.enduranceActive && !mainMenu.visible && !aboutDialog.visible; onActivated: receiver.stop() }
 
-    header: Rectangle {
+    function openMainMenu() { if (!window.enduranceActive) mainMenu.open() }
+    Shortcut { objectName: "mainMenuShortcut"; sequences: ["F10", "Alt+M"]; enabled: !window.enduranceActive && !aboutDialog.visible; onActivated: mainMenu.visible ? mainMenu.close() : window.openMainMenu() }
+    Action {
+        id: movePanelAction; objectName: "movePanelAction"
+        text: window.panelRight ? tr("Панель слева", "Panel on the left") : tr("Панель справа", "Panel on the right")
+        enabled: !window.enduranceActive
+        onTriggered: window.panelRight = !window.panelRight
+    }
+    component AppMenu: Menu {
+        implicitWidth: 248
+        popupType: Popup.Item
+        font.family: brand.sans
+        font.pixelSize: brand.text.body.size
+        background: Rectangle {
+            color: brand.colors.bg1; radius: brand.radius["radius-md"]
+            border.width: 1; border.color: brand.colors.lineControl
+        }
+    }
+    component AppMenuItem: MenuItem {
+        id: control
+        implicitHeight: brand.controlHeight
+        font.family: brand.sans
+        palette.text: highlighted ? brand.colors.onDial : window.ink
+        palette.windowText: highlighted ? brand.colors.onDial : window.ink
+        opacity: enabled ? 1 : brand.tokens.opacity.disabled
+        background: Rectangle {
+            radius: brand.radius["radius-sm"]
+            color: control.highlighted ? window.accent : "transparent"
+        }
+    }
+    AppMenu {
+        id: mainMenu; objectName: "mainMenu"
+        parent: windowHeader; x: 8; y: titleBar.height
+        AppMenu {
+            title: tr("Файл", "File")
+            AppMenuItem { text: tr("Открыть IQ…", "Open IQ…"); enabled: !window.enduranceActive && !receiver.status.running; onTriggered: iqFile.open() }
+            AppMenuItem { text: tr("Добавить manifest…", "Add manifest…"); enabled: !window.enduranceActive && !receiver.status.running; onTriggered: pluginFile.open() }
+            AppMenuItem { text: tr("Папка записи…", "Recording folder…"); enabled: !window.enduranceActive && !receiver.status.recording; onTriggered: folder.open() }
+            MenuSeparator {}
+            AppMenuItem { text: tr("Экспорт диагностики…", "Export diagnostics…"); onTriggered: diagnosticsFile.open() }
+            MenuSeparator {}
+            AppMenuItem { text: tr("Выход", "Exit"); enabled: !window.enduranceActive; onTriggered: window.close() }
+        }
+        AppMenu {
+            title: tr("Приём", "Receiver")
+            AppMenuItem { objectName: "menuRx"; text: receiver.status.running ? tr("Остановить", "Stop RX") : tr("Начать приём", "Start RX"); enabled: !window.enduranceActive; onTriggered: receiver.status.running ? receiver.stop() : window.start() }
+            AppMenuItem { text: tr("Обновить устройства", "Refresh devices"); enabled: !window.enduranceActive && !receiver.status.running; onTriggered: receiver.scan() }
+        }
+        AppMenu {
+            title: tr("Вид", "View")
+            AppMenuItem { action: movePanelAction }
+            AppMenu {
+                title: tr("Тема", "Theme")
+                AppMenuItem { text: tr("Тёмная", "Dark"); checkable: true; checked: window.theme === 0; onTriggered: window.theme = 0 }
+                AppMenuItem { text: tr("Светлая", "Light"); checkable: true; checked: window.theme === 1; onTriggered: window.theme = 1 }
+                AppMenuItem { text: tr("Системная", "System"); checkable: true; checked: window.theme === 2; onTriggered: window.theme = 2 }
+            }
+            AppMenu {
+                title: tr("Язык", "Language")
+                AppMenuItem { text: "Русский"; checkable: true; checked: window.language === "ru"; onTriggered: window.language = "ru" }
+                AppMenuItem { text: "English"; checkable: true; checked: window.language === "en"; onTriggered: window.language = "en" }
+            }
+        }
+        AppMenu {
+            title: tr("Справка", "Help")
+            AppMenuItem { text: tr("О SDR Next…", "About SDR Next…"); onTriggered: aboutDialog.open() }
+        }
+    }
+    Dialog {
+        id: aboutDialog; objectName: "aboutDialog"
+        implicitWidth: 360
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        title: tr("О SDR Next", "About SDR Next")
+        modal: true; standardButtons: Dialog.Ok
+        contentItem: Label { text: "SDR Next " + Qt.application.version + "\n" + tr("Мультиплатформенный SDR-приёмник", "Multiplatform SDR Receiver"); color: window.ink; wrapMode: Text.WordWrap }
+    }
+    WindowResizeHandles {
+        objectName: "windowResizeHandles"
+        hostWindow: window
+        parent: window.header ? window.header.parent : null
+        anchors.fill: parent
+    }
+
+    header: Column {
+        id: windowHeader
+        width: window.width
+        WindowTitleBar {
+            id: titleBar
+            objectName: "windowTitleBar"
+            width: parent.width
+            hostWindow: window; theme: brand
+            russian: window.language === "ru"
+            menuEnabled: !window.enduranceActive
+            menuOpen: mainMenu.visible
+            testCaption: window.enduranceActive ? window.title : ""
+            onMenuRequested: window.openMainMenu()
+        }
+        Rectangle {
+        width: parent.width
         enabled: !window.enduranceActive
         height: 112
         color: surface
@@ -174,15 +274,12 @@ ApplicationWindow {
             spacing: brand.spacing["space-2"]
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "SDR Next"; font.pixelSize: brand.text.title.size; font.family: brand.sansSemibold; color: ink }
-                Label { text: "0.1"; color: muted }
-                Rectangle { width: 1; height: brand.sizes["control-sm"]; color: muted; opacity: 0.4; Layout.leftMargin: 8; Layout.rightMargin: 8 }
                 Rectangle { width: 7; height: 7; radius: 4; color: receiver.status.running ? brand.colors.ok : muted }
                 Label { text: receiver.status.running ? tr("Приём", "Receiving") : receiver.status.state; color: muted }
                 Item { Layout.fillWidth: true }
                 BrandCombo { model: [tr("Тёмная", "Dark"),tr("Светлая", "Light"),tr("Системная", "System")]; objectName: "themeSelector"; currentIndex: window.theme; onActivated: window.theme = currentIndex; Accessible.name: tr("Тема", "Theme") }
                 BrandCombo { objectName: "languageSelector"; implicitWidth: 72; model: ["RU","EN"]; currentIndex: window.language === "ru" ? 0 : 1; onActivated: window.language = currentIndex === 0 ? "ru" : "en"; Accessible.name: "Language" }
-                BrandButton { text: panelRight ? "◀" : "▶"; onClicked: panelRight = !panelRight; Accessible.name: tr("Переставить панель", "Move control panel") }
+                BrandButton { text: panelRight ? "◀" : "▶"; onClicked: movePanelAction.trigger(); Accessible.name: tr("Переставить панель", "Move control panel") }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -209,6 +306,7 @@ ApplicationWindow {
                 BrandButton { objectName: "rxButton"; text: receiver.status.running ? tr("Остановить", "Stop") : tr("Начать приём", "Start RX"); highlighted: !receiver.status.running; onClicked: receiver.status.running ? receiver.stop() : window.start() }
             }
         }
+    }
     }
 
     SplitView {

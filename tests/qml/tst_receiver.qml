@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtTest
 
 TestCase {
@@ -68,9 +69,72 @@ TestCase {
         appWindow.width = oldWidth
         appWindow.height = oldHeight
     }
+    function test_window_header() {
+        verify(appWindow.flags & Qt.FramelessWindowHint)
+        const titleBar = findChild(appWindow, "windowTitleBar")
+        compare(findChild(appWindow, "titleLogo"), null)
+        const sdr = findChild(appWindow, "wordmarkSdr")
+        const next = findChild(appWindow, "wordmarkNext")
+        compare(sdr.text, "SDR")
+        compare(next.text, "Next")
+        compare(sdr.font.pixelSize, 16)
+        compare(next.font.pixelSize, 16)
+        const resize = findChild(appWindow, "windowResizeHandles")
+        compare(titleBar.height, 44)
+        const drag = findChild(appWindow, "titleDragRegion")
+        verify(drag.width > 400)
+        compare(drag.height, 44)
+        compare(findChild(appWindow, "mainMenuButton").width, 34)
+        compare(findChild(appWindow, "maximizeButton").width, 46)
+        compare(resize.width, appWindow.width)
+        compare(resize.height, appWindow.height)
+        appWindow.theme = 0
+        compare(sdr.color, "#e6ebf0")
+        compare(next.color, "#ffb224")
+        appWindow.theme = 1
+        compare(sdr.color, "#0e141a")
+        compare(next.color, "#8a4b00")
+        appWindow.theme = 0
+        const width = appWindow.width, height = appWindow.height
+        titleBar.toggleMaximized()
+        tryCompare(appWindow, "visibility", Window.Maximized)
+        compare(resize.enabled, false)
+        titleBar.toggleMaximized()
+        tryCompare(appWindow, "visibility", Window.Windowed)
+        compare(resize.enabled, true)
+        appWindow.width = width; appWindow.height = height
+    }
+    function test_menu_keyboard_during_rx() {
+        findChild(appWindow, "sourceSelector").currentIndex = 0
+        findChild(appWindow, "rateSelector").editText = "2400000"
+        appWindow.start()
+        tryVerify(function() { return receiver.status.running }, 10000)
+        appWindow.requestActivate()
+        const menu = findChild(appWindow, "mainMenu")
+        mouseClick(findChild(appWindow, "mainMenuButton"))
+        tryCompare(menu, "visible", true)
+        compare(findChild(appWindow, "rxEscapeShortcut").enabled, false)
+        compare(findChild(appWindow, "rxSpaceShortcut").enabled, false)
+        keyClick(Qt.Key_Escape)
+        tryCompare(menu, "visible", false)
+        compare(receiver.status.running, true)
+        keyClick(Qt.Key_F10)
+        tryCompare(menu, "visible", true)
+        keyClick(Qt.Key_Escape)
+        tryCompare(menu, "visible", false)
+        compare(receiver.status.running, true)
+        const oldSide = appWindow.panelRight
+        findChild(appWindow, "movePanelAction").trigger()
+        compare(appWindow.panelRight, !oldSide)
+        findChild(appWindow, "movePanelAction").trigger()
+        compare(appWindow.panelRight, oldSide)
+    }
     function test_endurance_controls_locked() {
         try {
             appWindow.enduranceActive = true
+            compare(findChild(appWindow, "mainMenuButton").enabled, false)
+            compare(findChild(appWindow, "mainMenuShortcut").enabled, false)
+            compare(findChild(appWindow, "menuRx").enabled, false)
             compare(findChild(appWindow, "rxSpaceShortcut").enabled, false)
             compare(findChild(appWindow, "rxEscapeShortcut").enabled, false)
             compare(findChild(appWindow, "rxButton").enabled, false)

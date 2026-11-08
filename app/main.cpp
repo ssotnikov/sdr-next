@@ -1,6 +1,7 @@
 #include "controller.hpp"
 #include "endurance.hpp"
 #include "spectrum_item.hpp"
+#include "window_chrome.hpp"
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -34,6 +35,9 @@ int main(int argc, char **argv) {
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("SDR", "Main");
+    WindowChrome chrome(engine.rootObjects().isEmpty()
+                            ? nullptr
+                            : qobject_cast<QQuickWindow *>(engine.rootObjects().front()));
     const auto args = app.arguments();
     std::unique_ptr<Endurance> endurance;
     const auto endurance_index = args.indexOf("--endurance-dir");

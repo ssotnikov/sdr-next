@@ -39,3 +39,7 @@
 - [Адаптация brand book для Qt Quick](ADR-020-qml-brand-theme.md).
 
 - [Проверка темы brand book](BRAND_THEME_VERIFICATION.md).
+
+- [Фирменный заголовок и меню](ADR-021-branded-window-header.md).
+
+- [Проверка заголовка и меню](WINDOW_HEADER_VERIFICATION.md).
