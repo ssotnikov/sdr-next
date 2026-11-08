@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "kind": "waterfall-style",
+  "id": "quiet-waterfall",
+  "name": "Quiet Waterfall",
+  "variants": {
+    "dark": {
+      "colors": {
+        "background": "#07090c",
+        "noData": "#172029",
+        "grid": "#26313c",
+        "labels": "#a1adb9",
+        "cursor": "#ffb224"
+      }
+    },
+    "light": {
+      "colors": {
+        "background": "#07090c",
+        "noData": "#172029",
+        "grid": "#26313c",
+        "labels": "#a1adb9",
+        "cursor": "#ffb224"
+      }
+    }
+  }
+}

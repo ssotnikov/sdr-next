@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "kind": "ui-theme",
+  "id": "lab-slate",
+  "name": "Lab Slate",
+  "variants": {
+    "dark": {
+      "colors": {
+        "bg1": "#111a22",
+        "lineControl": "#6f8193",
+        "dial": "#64c5ff",
+        "dialHover": "#8fd8ff",
+        "dialInk": "#8fd8ff"
+      }
+    },
+    "light": {
+      "colors": {
+        "dial": "#64c5ff",
+        "dialHover": "#8fd8ff",
+        "dialInk": "#0b5f8a",
+        "dialSoft": "#e2f3fc"
+      }
+    }
+  }
+}

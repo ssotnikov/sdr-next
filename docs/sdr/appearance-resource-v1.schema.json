@@ -1,0 +1,403 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SDR Next appearance resource v1",
+  "description": "Planning contract; semantic constraints are documented in APPEARANCE_PROFILES.md.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "kind",
+        "id",
+        "name",
+        "variants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "kind": {
+          "const": "ui-theme"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "variants": {
+          "type": "object",
+          "required": [
+            "dark",
+            "light"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dark": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/uiColors"
+                }
+              }
+            },
+            "light": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/uiColors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "kind",
+        "id",
+        "name",
+        "variants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "kind": {
+          "const": "spectrum-style"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "variants": {
+          "type": "object",
+          "required": [
+            "dark",
+            "light"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dark": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/spectrumColors"
+                }
+              }
+            },
+            "light": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/spectrumColors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "kind",
+        "id",
+        "name",
+        "variants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "kind": {
+          "const": "waterfall-style"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "variants": {
+          "type": "object",
+          "required": [
+            "dark",
+            "light"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dark": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/waterfallColors"
+                }
+              }
+            },
+            "light": {
+              "type": "object",
+              "required": [
+                "colors"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "$ref": "#/$defs/waterfallColors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "kind",
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "kind": {
+          "const": "color-map"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "stops": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": [
+              "pos",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pos": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "color": {
+                "$ref": "#/$defs/opaque"
+              }
+            }
+          }
+        },
+        "colors": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/opaque"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "stops"
+          ],
+          "not": {
+            "required": [
+              "colors"
+            ]
+          }
+        },
+        {
+          "required": [
+            "colors"
+          ],
+          "not": {
+            "required": [
+              "stops"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "opaque": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "rgba": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+    },
+    "uiColors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bg0": {
+          "$ref": "#/$defs/opaque"
+        },
+        "bg1": {
+          "$ref": "#/$defs/opaque"
+        },
+        "bg2": {
+          "$ref": "#/$defs/opaque"
+        },
+        "bg3": {
+          "$ref": "#/$defs/opaque"
+        },
+        "line": {
+          "$ref": "#/$defs/opaque"
+        },
+        "lineControl": {
+          "$ref": "#/$defs/opaque"
+        },
+        "ink": {
+          "$ref": "#/$defs/opaque"
+        },
+        "inkMuted": {
+          "$ref": "#/$defs/opaque"
+        },
+        "inkFaint": {
+          "$ref": "#/$defs/opaque"
+        },
+        "dial": {
+          "$ref": "#/$defs/opaque"
+        },
+        "dialHover": {
+          "$ref": "#/$defs/opaque"
+        },
+        "onDial": {
+          "$ref": "#/$defs/opaque"
+        },
+        "dialInk": {
+          "$ref": "#/$defs/opaque"
+        },
+        "dialSoft": {
+          "$ref": "#/$defs/opaque"
+        },
+        "onVfo": {
+          "$ref": "#/$defs/opaque"
+        },
+        "focus": {
+          "$ref": "#/$defs/opaque"
+        },
+        "ok": {
+          "$ref": "#/$defs/opaque"
+        },
+        "warn": {
+          "$ref": "#/$defs/opaque"
+        },
+        "danger": {
+          "$ref": "#/$defs/opaque"
+        },
+        "rec": {
+          "$ref": "#/$defs/opaque"
+        },
+        "okSoft": {
+          "$ref": "#/$defs/opaque"
+        },
+        "warnSoft": {
+          "$ref": "#/$defs/opaque"
+        },
+        "dangerSoft": {
+          "$ref": "#/$defs/opaque"
+        }
+      }
+    },
+    "spectrumColors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "$ref": "#/$defs/opaque"
+        },
+        "grid": {
+          "$ref": "#/$defs/opaque"
+        },
+        "labels": {
+          "$ref": "#/$defs/opaque"
+        },
+        "trace": {
+          "$ref": "#/$defs/opaque"
+        },
+        "traceFill": {
+          "$ref": "#/$defs/rgba"
+        },
+        "cursor": {
+          "$ref": "#/$defs/opaque"
+        }
+      }
+    },
+    "waterfallColors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "$ref": "#/$defs/opaque"
+        },
+        "noData": {
+          "$ref": "#/$defs/opaque"
+        },
+        "grid": {
+          "$ref": "#/$defs/opaque"
+        },
+        "labels": {
+          "$ref": "#/$defs/opaque"
+        },
+        "cursor": {
+          "$ref": "#/$defs/opaque"
+        }
+      }
+    }
+  }
+}

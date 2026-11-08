@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "kind": "color-map",
+  "id": "grey-scale",
+  "name": "Grey Scale",
+  "colors": [
+    "#000000",
+    "#ffffff"
+  ]
+}

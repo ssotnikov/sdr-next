@@ -1,0 +1,10 @@
+{
+  "appearance": {
+    "format": 1,
+    "mode": "system",
+    "uiThemeId": "user:lab-slate",
+    "spectrumStyleId": "user:midnight-plot",
+    "waterfallStyleId": "user:quiet-waterfall",
+    "colorMapId": "user:lab-signal"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "kind": "color-map",
+  "id": "lab-signal",
+  "name": "Lab Signal",
+  "stops": [
+    {
+      "pos": 0,
+      "color": "#0a0d10"
+    },
+    {
+      "pos": 0.4,
+      "color": "#0f6b8e"
+    },
+    {
+      "pos": 0.8,
+      "color": "#ffb224"
+    },
+    {
+      "pos": 1,
+      "color": "#fff4e0"
+    }
+  ]
+}

@@ -43,3 +43,5 @@
 - [Фирменный заголовок и меню](ADR-021-branded-window-header.md).
 
 - [Проверка заголовка и меню](WINDOW_HEADER_VERIFICATION.md).
+
+- [План custom appearance profiles](ADR-022-custom-appearance-profiles.md), [контракт и этапы](APPEARANCE_PROFILES.md), [JSON Schema](appearance-resource-v1.schema.json), [примеры](examples/appearance/README.md). Реализация запланирована.

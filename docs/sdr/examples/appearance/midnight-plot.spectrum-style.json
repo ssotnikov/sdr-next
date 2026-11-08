@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "kind": "spectrum-style",
+  "id": "midnight-plot",
+  "name": "Midnight Plot",
+  "variants": {
+    "dark": {
+      "colors": {
+        "background": "#0a0d10",
+        "grid": "#26313c",
+        "labels": "#a1adb9",
+        "trace": "#8fd8ff",
+        "traceFill": "#8fd8ff33",
+        "cursor": "#ffb224"
+      }
+    },
+    "light": {
+      "colors": {
+        "background": "#0a0d10",
+        "grid": "#26313c",
+        "labels": "#a1adb9",
+        "trace": "#8fd8ff",
+        "traceFill": "#8fd8ff33",
+        "cursor": "#ffb224"
+      }
+    }
+  }
+}
