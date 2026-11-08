@@ -1,26 +1,26 @@
-# Third-party notices — предварительная поставка
+# Third-party notices — preview distribution
 
-Собственный код sdr-app распространяется по MIT (LICENSE). Условия сторонних компонентов сохраняются; весь исполняемый пакет не объявляется целиком MIT.
+The project's own sdr-app code is distributed under the MIT license (LICENSE). Third-party components retain their own terms; the complete executable package is not declared to be entirely MIT-licensed.
 
 ## Qt 6.10.0
 
-Используются динамические Qt Core, Gui, Qml, Quick, QuickControls2/Fusion, Multimedia и их необходимые зависимости. Для выбранного open-source пути применяются лицензии соответствующих модулей (в том числе LGPLv3); исходники точной версии доступны в [Qt download archive](https://download.qt.io/archive/qt/6.10/6.10.0/). Тексты базовых лицензий поставляются в licenses; полный состав third-party определяется Qt SBOM и фактическими DLL/SO конкретного пакета.
+The application uses dynamically linked Qt Core, Gui, Qml, Quick, QuickControls2/Fusion, Multimedia, and their required dependencies. The selected open-source licensing option is subject to the licenses of the respective modules (including LGPLv3); the source code for the exact version is available in the [Qt download archive](https://download.qt.io/archive/qt/6.10/6.10.0/). The primary license texts are included in licenses; the complete set of third-party components is determined from the Qt SBOM and the actual DLL/SO files in each package.
 
-Библиотеки Qt должны оставаться заменяемыми совместимой сборкой. Исходники приложения и CMake-инструкции позволяют пересобрать и перелинковать приложение. Упаковщик не объединяет Qt статически. Условия выбранных модулей и их транзитивных компонентов нужно проверить до финального релиза.
+Qt libraries must remain replaceable with compatible builds. The application source code and CMake instructions allow the application to be rebuilt and relinked. The packaging process does not link Qt statically. The terms applicable to the selected modules and their transitive components must be reviewed before the final release.
 
-Для Windows используется native multimedia backend; автоматическое включение FFmpeg упаковщиком отключено. Системные мультимедийные компоненты Windows не копируются в пакет.
+The Windows build uses the native multimedia backend; automatic inclusion of FFmpeg by the packaging process is disabled. Windows system multimedia components are not copied into the package.
 
-## SoapySDR и аппаратные драйверы
+## SoapySDR and hardware drivers
 
-SoapySDR 0.8 — внешний runtime, используется публичный C API; upstream [pothosware/SoapySDR](https://github.com/pothosware/SoapySDR), BSL-1.0. SoapyHackRF/SoapyRTLSDR/SoapyAirspy, USB-библиотеки и SDK устройств пользователь устанавливает отдельно. Они не копируются упаковщиком и не получают MIT-лицензию приложения. Условия этих драйверов могут отличаться, включая copyleft; их совместное распространение требует отдельной проверки.
+SoapySDR 0.8 is an external runtime accessed through its public C API; upstream: [pothosware/SoapySDR](https://github.com/pothosware/SoapySDR), BSL-1.0. Users install SoapyHackRF/SoapyRTLSDR/SoapyAirspy, USB libraries, and device SDKs separately. These components are not copied by the packaging process and are not covered by the application's MIT license. Driver terms may differ, including copyleft licenses; distributing them together requires a separate review.
 
-## Инструменты и runtime компилятора
+## Build tools and compiler runtime
 
-Qt SDK, CMake, Ninja, Cargo/Rust и сборочные окружения не входят в исполняемый пакет. При использовании MinGW его runtime-компоненты распространяются на собственных условиях, включая применимые runtime exceptions; наличие и тексты этих условий проверяются для конкретной предварительной сборки.
+The Qt SDK, CMake, Ninja, Cargo/Rust, and build environments are not included in the executable package. When MinGW is used, its runtime components are distributed under their own terms, including applicable runtime exceptions; the presence and text of these terms are checked for each specific preview build.
 
-## Статус
+## Status
 
-Это уведомление не является отметкой завершённого аудита. Финальный G6 требует сверки фактических бинарных зависимостей, всех применимых notices и лицензионных текстов. `package-manifest.json` содержит имена/размеры/SHA-256 файлов, но сам по себе не заменяет полный SBOM с лицензиями и зависимостями.
+This notice does not indicate that the audit is complete. The final G6 gate requires checking the actual binary dependencies, all applicable notices, and license texts. `package-manifest.json` contains filenames, sizes, and SHA-256 hashes, but does not by itself replace a complete SBOM covering licenses and dependencies.
 
 ## IBM Plex fonts
 
