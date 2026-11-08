@@ -1,7 +1,7 @@
 # Design
 
 ## Decisions
-Протокол: [RX_ENDURANCE_PROTOCOL.md](../../../docs/sdr/RX_ENDURANCE_PROTOCOL.md). Отдельный opt-in harness управляет существующим Controller в настоящем Main.qml, без замены RX/DSP/audio. Выбор по ID prefix передаётся CLI; конкретный серийный номер не попадает в отчёт. Пишутся 1 Hz JSONL и итоговый JSON; WAV завершается штатно после stop.
+Протокол: [RX_ENDURANCE_PROTOCOL.md](../../../../docs/sdr/RX_ENDURANCE_PROTOCOL.md). Отдельный opt-in harness управляет существующим Controller в настоящем Main.qml, без замены RX/DSP/audio. Выбор по ID prefix передаётся CLI; конкретный серийный номер не попадает в отчёт. Пишутся 1 Hz JSONL и итоговый JSON; WAV завершается штатно после stop.
 
 CPU — время процесса, нормированное на число логических CPU и wall clock. RAM — working set/private bytes. Свежие отображённые спектры считаются через frameSwapped и изменившийся номер опубликованного спектра. Очередь GUI проверяется межпоточным queued ping раз в 250 ms; это proxy, не измерение ввода. Audio latency без RF/audio reference остаётся not_verified. Отчёт не выдаёт частичный результат за полную приёмку.
 
