@@ -1,4 +1,5 @@
 #include "controller.hpp"
+#include "endurance.hpp"
 #include "spectrum_item.hpp"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -25,6 +26,26 @@ int main(int argc, char **argv) {
         [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule("SDR", "Main");
     const auto args = app.arguments();
+    std::unique_ptr<Endurance> endurance;
+    const auto endurance_index = args.indexOf("--endurance-dir");
+    if (endurance_index >= 0) {
+        const auto value = [&](const QString &flag, const QString &fallback) {
+            const auto i = args.indexOf(flag);
+            return i >= 0 && i + 1 < args.size() ? args[i + 1] : fallback;
+        };
+        bool valid = false;
+        const double duration = value("--endurance-seconds", "28800").toDouble(&valid);
+        try {
+            if (!valid || engine.rootObjects().isEmpty())
+                return 2;
+            endurance = std::make_unique<Endurance>(
+                controller, qobject_cast<QQuickWindow *>(engine.rootObjects().front()),
+                value("--endurance-dir", ""), duration, value("--endurance-provider", ""));
+        } catch (const std::exception &e) {
+            qCritical("Endurance setup failed: %s", e.what());
+            return 2;
+        }
+    }
     const auto index = args.indexOf("--smoke-test");
     if (index >= 0)
         QTimer::singleShot(2000, &app, &QCoreApplication::quit);

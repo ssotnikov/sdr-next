@@ -150,6 +150,8 @@ void Controller::setAudio(int index, double volume) {
         sink_->setVolume(static_cast<float>(volume_));
 }
 void Controller::saveSettings(const QVariantMap &values) {
+    if (QCoreApplication::arguments().contains("--endurance-dir"))
+        return;
     // Preserve malformed/unknown files until the user explicitly removes or repairs them.
     if (settings_invalid_)
         return;
