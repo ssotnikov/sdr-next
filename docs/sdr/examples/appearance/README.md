@@ -14,3 +14,14 @@
 ## Проверка проектных fixtures — 2026-11-08
 
 PowerShell Test-Json: 5 валидных примеров приняты, 5 ошибочных вариантов отклонены (format, неизвестное поле, отсутствующий light, stops+colors вместе, alpha в карте). Отдельно проверены порядок/endpoints stops и 34 пары контраста примеров после подстановки defaults. Это проверка контракта/примеров, не выполнение будущих unit/render/QML/benchmark задач приложения.
+
+## Classic Teal — схема со скриншота пользователя
+
+- [classic-teal.ui-theme.json](classic-teal.ui-theme.json) — основной запрошенный JSON подключаемой UI theme; две основы, акцент #72D5D2.
+- [classic-teal.spectrum-style.json](classic-teal.spectrum-style.json) — тёмное поле #101C2C, линия #7EE4E0, янтарный readout #E8B979.
+- [classic-teal.waterfall-style.json](classic-teal.waterfall-style.json) — независимые цвета waterfall.
+- [classic-teal.settings-appearance.fragment.json](classic-teal.settings-appearance.fragment.json) — пример выбора всего набора после импорта трёх профилей и карты builtin:ocean. Это фрагмент настроек, не импортируемый ресурс.
+
+Для будущей встроенной поставки выбраны те же данные с namespace builtin:classic-teal. Внешний импорт даёт user:classic-teal, поскольку namespace назначает каталог, а не JSON. Dark основан на старых исходниках и PNG; light — отдельно обозначенная адаптация. В текущей сборке импорт профилей ещё не реализован, эти файлы не означают уже установленный пункт меню.
+
+Проверка Classic Teal: все три JSON соответствуют schema v1; проверены 68 пар контраста UI/графиков, включая связанный пример Midnight Plot после добавления readout. Восемь resource fixtures в каталоге проходят Test-Json. Числовые параметры RX/устройства со скриншота в профили не входят.

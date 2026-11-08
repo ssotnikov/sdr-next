@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "kind": "ui-theme",
+  "id": "classic-teal",
+  "name": "Classic Teal",
+  "variants": {
+    "dark": {
+      "colors": {
+        "bg0": "#16232f",
+        "bg1": "#1e303e",
+        "bg2": "#1e303e",
+        "bg3": "#2b3e4b",
+        "line": "#3d505d",
+        "lineControl": "#748c9c",
+        "ink": "#e2ebed",
+        "inkMuted": "#9baeb8",
+        "inkFaint": "#9baeb8",
+        "dial": "#72d5d2",
+        "dialHover": "#8be0dd",
+        "onDial": "#14232d",
+        "dialInk": "#72d5d2",
+        "dialSoft": "#1b4247",
+        "onVfo": "#14232d",
+        "focus": "#72d5d2",
+        "ok": "#72d5d2",
+        "warn": "#e8b979",
+        "danger": "#ffd7bf",
+        "rec": "#e8b979",
+        "okSoft": "#1b4247",
+        "warnSoft": "#3b3022",
+        "dangerSoft": "#49322b"
+      }
+    },
+    "light": {
+      "colors": {
+        "bg0": "#e7edf0",
+        "bg1": "#f7fafb",
+        "bg2": "#f7fafb",
+        "bg3": "#dde8ec",
+        "line": "#ccd4d8",
+        "lineControl": "#647a87",
+        "ink": "#182a35",
+        "inkMuted": "#4a626f",
+        "inkFaint": "#4a626f",
+        "dial": "#72d5d2",
+        "dialHover": "#8be0dd",
+        "onDial": "#14232d",
+        "dialInk": "#006b68",
+        "dialSoft": "#d8f2ef",
+        "onVfo": "#14232d",
+        "focus": "#006b68",
+        "ok": "#006b68",
+        "warn": "#805209",
+        "danger": "#6c3022",
+        "rec": "#805209",
+        "okSoft": "#d8f2ef",
+        "warnSoft": "#fff1d8",
+        "dangerSoft": "#f5dcd1"
+      }
+    }
+  }
+}

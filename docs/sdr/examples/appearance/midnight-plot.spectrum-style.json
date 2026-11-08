@@ -11,7 +11,8 @@
         "labels": "#a1adb9",
         "trace": "#8fd8ff",
         "traceFill": "#8fd8ff33",
-        "cursor": "#ffb224"
+        "cursor": "#ffb224",
+        "readout": "#ffb224"
       }
     },
     "light": {
@@ -21,7 +22,8 @@
         "labels": "#a1adb9",
         "trace": "#8fd8ff",
         "traceFill": "#8fd8ff33",
-        "cursor": "#ffb224"
+        "cursor": "#ffb224",
+        "readout": "#ffb224"
       }
     }
   }

@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "kind": "spectrum-style",
+  "id": "classic-teal",
+  "name": "Classic Teal",
+  "variants": {
+    "dark": {
+      "colors": {
+        "background": "#101c2c",
+        "grid": "#1b2837",
+        "labels": "#a5bbc8",
+        "trace": "#7ee4e0",
+        "traceFill": "#7ee4e000",
+        "cursor": "#72d5d2",
+        "readout": "#e8b979"
+      }
+    },
+    "light": {
+      "colors": {
+        "background": "#101c2c",
+        "grid": "#1b2837",
+        "labels": "#a5bbc8",
+        "trace": "#7ee4e0",
+        "traceFill": "#7ee4e000",
+        "cursor": "#72d5d2",
+        "readout": "#e8b979"
+      }
+    }
+  }
+}

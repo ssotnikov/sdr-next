@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "kind": "waterfall-style",
+  "id": "classic-teal",
+  "name": "Classic Teal",
+  "variants": {
+    "dark": {
+      "colors": {
+        "background": "#101c2c",
+        "noData": "#101c2c",
+        "grid": "#1b2837",
+        "labels": "#a5bbc8",
+        "cursor": "#72d5d2"
+      }
+    },
+    "light": {
+      "colors": {
+        "background": "#101c2c",
+        "noData": "#101c2c",
+        "grid": "#1b2837",
+        "labels": "#a5bbc8",
+        "cursor": "#72d5d2"
+      }
+    }
+  }
+}

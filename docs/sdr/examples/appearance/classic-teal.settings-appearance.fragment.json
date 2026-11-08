@@ -1,0 +1,10 @@
+{
+  "appearance": {
+    "format": 1,
+    "mode": "dark",
+    "uiThemeId": "user:classic-teal",
+    "spectrumStyleId": "user:classic-teal",
+    "waterfallStyleId": "user:classic-teal",
+    "colorMapId": "builtin:ocean"
+  }
+}

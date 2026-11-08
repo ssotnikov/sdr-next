@@ -375,6 +375,9 @@
         },
         "cursor": {
           "$ref": "#/$defs/opaque"
+        },
+        "readout": {
+          "$ref": "#/$defs/opaque"
         }
       }
     },
