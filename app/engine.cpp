@@ -17,6 +17,14 @@
 #include <sdr/path.hpp>
 
 namespace {
+double milliseconds(std::chrono::steady_clock::duration duration) {
+    return std::chrono::duration<double, std::milli>(duration).count();
+}
+void maximum(std::atomic<double> &value, double sample) {
+    auto old = value.load(std::memory_order_relaxed);
+    while (old < sample && !value.compare_exchange_weak(old, sample, std::memory_order_relaxed)) {
+    }
+}
 std::filesystem::path path(const QString &value) {
     return sdr::path_from_utf8(value.toUtf8().toStdString());
 }
@@ -31,10 +39,17 @@ class PluginSource final : public sdr::Source {
 } // namespace
 void AudioBuffer::push(std::span<const float> samples) {
     std::lock_guard lock(mutex_);
+    const auto now = std::chrono::steady_clock::now();
+    if (last_push_ != std::chrono::steady_clock::time_point{})
+        metrics_.max_push_gap_ms =
+            std::max(metrics_.max_push_gap_ms, milliseconds(now - last_push_));
+    last_push_ = now;
+    metrics_.input += samples.size();
     if (samples.size() > data_.size() - size_) {
         ++drops_;
         return;
     }
+    metrics_.accepted += samples.size();
     for (float x : samples) {
         data_[(read_ + size_) % data_.size()] = x;
         ++size_;
@@ -42,10 +57,17 @@ void AudioBuffer::push(std::span<const float> samples) {
 }
 qint64 AudioBuffer::read(char *destination, qint64 bytes) {
     std::lock_guard lock(mutex_);
+    const auto now = std::chrono::steady_clock::now();
+    if (last_read_ != std::chrono::steady_clock::time_point{})
+        metrics_.max_read_gap_ms =
+            std::max(metrics_.max_read_gap_ms, milliseconds(now - last_read_));
+    last_read_ = now;
     const auto count = static_cast<std::size_t>(bytes) / sizeof(float);
     if (size_ >= std::max<std::size_t>(4800, std::min(count, data_.size())))
         started_ = true;
     std::size_t available = started_ ? std::min(count, size_) : 0;
+    metrics_.requested += count;
+    metrics_.delivered += available;
     for (std::size_t i = 0; i < available; ++i) {
         const float v = data_[read_];
         std::memcpy(destination + i * sizeof(float), &v, sizeof(float));
@@ -60,10 +82,21 @@ qint64 AudioBuffer::read(char *destination, qint64 bytes) {
 }
 void AudioBuffer::clear(bool reset_metrics) {
     std::lock_guard lock(mutex_);
+    if (!reset_metrics)
+        metrics_.discarded += size_;
     read_ = size_ = 0;
     started_ = false;
-    if (reset_metrics)
+    if (reset_metrics) {
         underruns_ = drops_ = 0;
+        metrics_ = {};
+        last_read_ = last_push_ = {};
+    }
+}
+AudioBuffer::Metrics AudioBuffer::metrics() {
+    std::lock_guard lock(mutex_);
+    auto value = metrics_;
+    value.queued = size_;
+    return value;
 }
 Engine::Engine(AudioBuffer &audio, const QString &device_directory)
     : audio_(audio), device_directory_(device_directory.isEmpty()
@@ -85,8 +118,13 @@ Snapshot Engine::snapshot() {
     return snapshot_;
 }
 void Engine::publish() {
+    const auto began = std::chrono::steady_clock::now();
     std::lock_guard lock(snapshot_mutex_);
+    current_.max_source_read_ms = max_source_read_ms_;
+    current_.max_enqueue_wait_ms = max_enqueue_wait_ms_;
     snapshot_ = current_;
+    current_.max_publish_ms =
+        std::max(current_.max_publish_ms, milliseconds(std::chrono::steady_clock::now() - began));
 }
 void Engine::event(const QString &code, const QString &message) {
     const QString directory =
@@ -225,6 +263,10 @@ void Engine::start(const std::string &id, sdr::Config requested) {
     acquisition_done_ = false;
     gaps_ = 0;
     overflows_ = 0;
+    max_source_read_ms_ = max_enqueue_wait_ms_ = 0;
+    current_.max_source_read_ms = current_.max_enqueue_wait_ms = current_.max_dsp_ms = 0;
+    current_.max_record_write_ms = current_.max_worker_gap_ms = current_.max_publish_ms = 0;
+    last_block_time_ = {};
     {
         std::lock_guard lock(failure_mutex_);
         acquisition_failure_.clear();
@@ -248,7 +290,11 @@ void Engine::start(const std::string &id, sdr::Config requested) {
             auto last_data = deadline;
             while (!token.stop_requested()) {
                 auto block = std::make_shared<sdr::Block>();
-                if (!source->read(*block))
+                const auto read_began = std::chrono::steady_clock::now();
+                const bool has_data = source->read(*block);
+                maximum(max_source_read_ms_,
+                        milliseconds(std::chrono::steady_clock::now() - read_began));
+                if (!has_data)
                     break;
                 if (block->samples.empty()) {
                     if (std::chrono::steady_clock::now() - last_data >= std::chrono::seconds(5))
@@ -259,7 +305,12 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                 if (block->discontinuity)
                     ++gaps_;
                 const auto count = block->samples.size();
-                if (!iq_.push_for(std::move(block), std::chrono::milliseconds(20), token)) {
+                const auto enqueue_began = std::chrono::steady_clock::now();
+                const bool enqueued =
+                    iq_.push_for(std::move(block), std::chrono::milliseconds(20), token);
+                maximum(max_enqueue_wait_ms_,
+                        milliseconds(std::chrono::steady_clock::now() - enqueue_began));
+                if (!enqueued) {
                     if (token.stop_requested())
                         break;
                     ++overflows_;
@@ -490,6 +541,12 @@ void Engine::run(std::stop_token token) {
                 }
             }
             if (current_.running) {
+                // Preserve a worker stall even if acquisition faults before another block is
+                // popped.
+                if (last_block_time_ != std::chrono::steady_clock::time_point{})
+                    current_.max_worker_gap_ms =
+                        std::max(current_.max_worker_gap_ms,
+                                 milliseconds(std::chrono::steady_clock::now() - last_block_time_));
                 QString failure;
                 {
                     std::lock_guard lock(failure_mutex_);
@@ -500,6 +557,10 @@ void Engine::run(std::stop_token token) {
                 if (auto block = iq_.pop()) {
                     worked = true;
                     const auto began = std::chrono::steady_clock::now();
+                    if (last_block_time_ != std::chrono::steady_clock::time_point{})
+                        current_.max_worker_gap_ms = std::max(
+                            current_.max_worker_gap_ms, milliseconds(began - last_block_time_));
+                    last_block_time_ = began;
                     const auto &b = **block;
                     if (b.discontinuity) {
                         demod_.configure(config);
@@ -507,11 +568,16 @@ void Engine::run(std::stop_token token) {
                             throw std::runtime_error("Plugin processing stopped after IQ "
                                                      "discontinuity; reset requires restart");
                     }
+                    const auto dsp_began = std::chrono::steady_clock::now();
                     demod_.process(b.samples, audio_block_);
                     if (plugin_demod_)
                         plugin_demod_->process(b.samples, audio_block_);
+                    current_.max_dsp_ms =
+                        std::max(current_.max_dsp_ms,
+                                 milliseconds(std::chrono::steady_clock::now() - dsp_began));
                     audio_.push(audio_block_);
                     if (current_.recording) {
+                        const auto record_began = std::chrono::steady_clock::now();
                         try {
                             if (raw_on_) {
                                 if (b.discontinuity)
@@ -525,6 +591,9 @@ void Engine::run(std::stop_token token) {
                             current_.error = QString::fromUtf8(e.what());
                             event("record.error", current_.error);
                         }
+                        current_.max_record_write_ms =
+                            std::max(current_.max_record_write_ms,
+                                     milliseconds(std::chrono::steady_clock::now() - record_began));
                     }
                     current_.iq_samples += b.samples.size();
                     current_.power_db = demod_.power_db();

@@ -15,6 +15,12 @@
 
 class AudioBuffer {
   public:
+    struct Metrics {
+        std::uint64_t input = 0, accepted = 0, requested = 0, delivered = 0, discarded = 0;
+        std::size_t queued = 0;
+        double max_read_gap_ms = 0, max_push_gap_ms = 0;
+    };
+    Metrics metrics();
     void push(std::span<const float>);
     qint64 read(char *, qint64);
     void clear(bool reset_metrics = true);
@@ -27,6 +33,8 @@ class AudioBuffer {
     std::size_t read_ = 0, size_ = 0;
     bool started_ = false;
     std::atomic<std::uint64_t> underruns_{0}, drops_{0};
+    Metrics metrics_;
+    std::chrono::steady_clock::time_point last_read_{}, last_push_{};
 };
 struct Snapshot {
     QString state = "Idle", error;
@@ -41,6 +49,8 @@ struct Snapshot {
     bool bias_t = false;
     int direct_sampling = 0;
     std::size_t queue_depth = 0;
+    double max_source_read_ms = 0, max_enqueue_wait_ms = 0, max_dsp_ms = 0;
+    double max_record_write_ms = 0, max_worker_gap_ms = 0, max_publish_ms = 0;
 };
 class Engine {
   public:
@@ -69,6 +79,7 @@ class Engine {
     QString acquisition_failure_;
     std::atomic<bool> acquisition_done_{false};
     std::atomic<std::uint64_t> gaps_{0}, overflows_{0};
+    std::atomic<double> max_source_read_ms_{0}, max_enqueue_wait_ms_{0};
     std::vector<std::shared_ptr<sdr::PluginModule>> modules_;
     struct DeviceBinding {
         std::shared_ptr<sdr::DeviceModule> module;
@@ -87,6 +98,7 @@ class Engine {
     QJsonArray recording_gaps_;
     QJsonObject metadata_;
     std::chrono::steady_clock::time_point frame_time_{};
+    std::chrono::steady_clock::time_point last_block_time_{};
     void run(std::stop_token);
     void publish();
     void event(const QString &, const QString &);

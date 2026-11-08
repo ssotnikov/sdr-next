@@ -194,6 +194,11 @@ class Endurance final : public QObject {
         row["elapsed_seconds"] = elapsed_;
         row["cpu_average_percent_total"] = cpu_average_;
         row["presented_spectrum_fps"] = fps;
+        const auto *window = qobject_cast<QQuickWindow *>(parent());
+        row["window_visible"] = window && window->isVisible();
+        row["window_exposed"] = window && window->isExposed();
+        row["window_visibility"] = window ? static_cast<int>(window->visibility()) : -1;
+        row["gui_spectra_published"] = static_cast<double>(published_);
         row["gui_queue_proxy_last_ms"] = queue_delays_.empty() ? -1 : queue_delays_.back();
         row["status"] = QJsonObject::fromVariantMap(status);
         last_status_ = status;

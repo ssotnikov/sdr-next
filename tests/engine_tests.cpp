@@ -31,6 +31,21 @@ int main(int argc, char **argv) {
         QTemporaryDir folder;
         check(folder.isValid(), "Temporary directory");
         AudioBuffer audio;
+        audio.push(std::vector<float>(5000, 0.25f));
+        char probe[400 * sizeof(float)];
+        audio.read(probe, sizeof(probe));
+        auto counts = audio.metrics();
+        check(counts.input == 5000 && counts.accepted == 5000 && counts.requested == 400 &&
+                  counts.delivered == 400 && counts.queued == 4600 && counts.discarded == 0,
+              "Audio frame accounting at actual push/read seam");
+        audio.clear(false);
+        counts = audio.metrics();
+        check(counts.discarded == 4600 && counts.queued == 0 &&
+                  counts.accepted == counts.delivered + counts.discarded,
+              "Cleared audio is accounted without losing session metrics");
+        audio.clear();
+        check(audio.metrics().input == 0 && audio.metrics().discarded == 0,
+              "New session resets audio accounting");
         audio.push(std::vector<float>(12001));
         check(audio.drops() == 1, "Audio overflow counted");
         audio.clear(false);
@@ -150,6 +165,18 @@ int main(int argc, char **argv) {
             engine.post([&] { engine.unload_plugins(); });
             wait([&] { return engine.snapshot().plugins.empty(); }, "Plugin disabled");
         }
+        config.sample_rate = 2400000;
+        engine.post([&] { engine.start("synthetic", config); });
+        wait([&] { return engine.snapshot().running && engine.snapshot().iq_samples > 50000; },
+             "RX active before deliberate worker stall");
+        engine.post([] { std::this_thread::sleep_for(std::chrono::milliseconds(200)); });
+        wait([&] { return engine.snapshot().error.contains("IQ queue overflow"); },
+             "Bounded IQ queue reports deliberate worker stall");
+        const auto stalled = engine.snapshot();
+        check(!stalled.running && stalled.overflows == 1 && stalled.max_enqueue_wait_ms >= 15,
+              "Overflow and queue wait metrics survive fault teardown");
+        check(stalled.max_worker_gap_ms >= 150,
+              "Worker pause must remain visible when overflow is detected before next block");
         std::cout << "Engine integration tests passed\n";
         return 0;
     } catch (const std::exception &e) {
