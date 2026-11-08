@@ -13,6 +13,7 @@
 - [ADR-013: платформы](ADR-013-desktop-platforms.md), [ADR-014: технические контракты](ADR-014-mvp-implementation-contracts.md), [ADR-015: эталон и приёмка](ADR-015-reference-and-acceptance.md).
 - [ADR-016: перенос испытаний RTL-SDR/Airspy](ADR-016-deferred-device-qualification.md), [термины подключения источников](GLOSSARY.md).
 - [ADR-017: независимые модули устройств](ADR-017-device-provider-modules.md), [Device Provider API](DEVICE_PLUGIN_API.md), [проверка модульности](DEVICE_PROVIDER_VERIFICATION.md).
+- [Протокол длительного RX](RX_ENDURANCE_PROTOCOL.md), [текущий восьмичасовой прогон](RX_ENDURANCE_RUN_2026-11-08.md).
 - [DSP API](DSP_API.md), [Plugin SDK](PLUGIN_SDK.md), [зависимости](DEPENDENCIES.md), [проверка реализации](MVP_V0_1_VERIFICATION.md).
 
 ## Происхождение и полнота
