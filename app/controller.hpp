@@ -28,7 +28,7 @@ class Controller final : public QObject {
     Q_PROPERTY(QStringList audioOutputs READ audioOutputs CONSTANT)
     Q_PROPERTY(QVariantMap settings READ settings CONSTANT)
   public:
-    explicit Controller(QObject *parent = nullptr);
+    explicit Controller(QObject *parent = nullptr, bool trace_audio = false);
     ~Controller() override;
     QVariantMap status() const { return status_; }
     QVariantList devices() const { return devices_; }
@@ -46,6 +46,7 @@ class Controller final : public QObject {
     Q_INVOKABLE void saveSettings(const QVariantMap &);
     Q_INVOKABLE void exportDiagnostics(const QString &);
     void reportTestFailure(const QString &message) { ui_error_ = message; }
+    AudioTrace *audioTrace() const { return audio_.trace(); }
   signals:
     void changed();
     void devicesChanged();

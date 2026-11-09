@@ -1,4 +1,5 @@
 #pragma once
+#include "audio_trace.hpp"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QStringList>
@@ -6,6 +7,7 @@
 #include <condition_variable>
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <sdr/bounded_queue.hpp>
 #include <sdr/device.hpp>
@@ -16,19 +18,23 @@
 
 class AudioBuffer {
   public:
+    explicit AudioBuffer(bool trace = false)
+        : trace_(trace ? std::make_unique<AudioTrace>() : nullptr) {}
+    AudioTrace *trace() const { return trace_.get(); }
     struct Metrics {
         std::uint64_t input = 0, accepted = 0, requested = 0, delivered = 0, discarded = 0;
         std::size_t queued = 0;
         double max_read_gap_ms = 0, max_push_gap_ms = 0;
     };
     Metrics metrics();
-    void push(std::span<const float>);
+    void push(std::span<const float>, std::uint64_t block = 0);
     qint64 read(char *, qint64);
     void clear(bool reset_metrics = true);
     std::uint64_t underruns() const { return underruns_; }
     std::uint64_t drops() const { return drops_; }
 
   private:
+    const std::unique_ptr<AudioTrace> trace_;
     std::mutex mutex_;
     std::vector<float> data_ = std::vector<float>(12000);
     std::size_t read_ = 0, size_ = 0;

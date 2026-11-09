@@ -22,12 +22,58 @@ template <class F> void wait(F condition, const char *message) {
     }
     throw std::runtime_error(message);
 }
+void check_audio_diagnostics() {
+    AudioBuffer traced(true);
+    std::vector<float> output(4801);
+    const std::vector<float> block(4800, 0.25f);
+    const auto read = [&](AudioBuffer &audio, std::size_t frames) {
+        audio.read(reinterpret_cast<char *>(output.data()),
+                   static_cast<qint64>(frames * sizeof(float)));
+    };
+    read(traced, 4800); // Startup silence before the first push.
+    traced.push(block, 41);
+    read(traced, 4800);
+    check(output[0] == 0.25f, "Audio samples delivered before a producer pause");
+    read(traced, 4800);
+    check(output[0] == 0 && traced.underruns() == 1, "Producer pause causes post-start silence");
+    traced.push(block, 42);
+    traced.push(block, 43);
+    traced.push(block, 44);
+    check(traced.drops() == 1, "Catch-up burst can exceed the bounded queue");
+    std::vector<AudioTrace::Event> events;
+    traced.trace()->take(events);
+    using Kind = AudioTrace::Kind;
+    check(events.size() == 7 && events.front().kind == Kind::prefill &&
+              events[1].block == 41 && events[3].kind == Kind::underrun &&
+              events[3].actual == 0 && events[3].frames == 4800 &&
+              events.back().kind == Kind::drop && events.back().before == 9600 &&
+              events.back().after == 9600,
+          "Trace distinguishes startup, starvation and rejected blocks");
+    for (std::size_t i = 0; i <= AudioTrace::capacity; ++i)
+        traced.trace()->add({Kind::clear});
+    traced.trace()->take(events);
+    check(events.size() == AudioTrace::capacity && traced.trace()->lost() == 1,
+          "A stalled collector bounds memory and exposes trace loss");
+
+    // 100 ms per iteration. One extra request every seven iterations is about 30 ppm.
+    for (bool drift : {false, true}) {
+        AudioBuffer audio;
+        audio.push(std::vector<float>(500, 0.25f));
+        for (int step = 1; step <= 3514; ++step) {
+            audio.push(block);
+            read(audio, drift && step % 7 == 0 ? 4801 : 4800);
+        }
+        check(audio.drops() == 0 && audio.underruns() == (drift ? 2 : 0),
+              "Virtual-time audio consumption distinguishes matched clocks and sustained deficit");
+    }
+}
 } // namespace
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("sdr-app-engine-tests");
     QStandardPaths::setTestModeEnabled(true);
     try {
+        check_audio_diagnostics();
         QTemporaryDir folder;
         check(folder.isValid(), "Temporary directory");
         AudioBuffer audio;

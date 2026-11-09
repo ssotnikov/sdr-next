@@ -37,7 +37,7 @@ class PluginSource final : public sdr::Source {
     bool read(sdr::Block &block) override { return instance_.read(block); }
 };
 } // namespace
-void AudioBuffer::push(std::span<const float> samples) {
+void AudioBuffer::push(std::span<const float> samples, std::uint64_t block) {
     std::lock_guard lock(mutex_);
     const auto now = std::chrono::steady_clock::now();
     if (last_push_ != std::chrono::steady_clock::time_point{})
@@ -47,6 +47,8 @@ void AudioBuffer::push(std::span<const float> samples) {
     metrics_.input += samples.size();
     if (samples.size() > data_.size() - size_) {
         ++drops_;
+        if (trace_)
+            trace_->add({AudioTrace::Kind::drop, block, samples.size(), 0, size_, size_}, now);
         return;
     }
     metrics_.accepted += samples.size();
@@ -54,6 +56,9 @@ void AudioBuffer::push(std::span<const float> samples) {
         data_[(read_ + size_) % data_.size()] = x;
         ++size_;
     }
+    if (trace_)
+        trace_->add({AudioTrace::Kind::push, block, samples.size(), samples.size(),
+                     size_ - samples.size(), size_}, now);
 }
 qint64 AudioBuffer::read(char *destination, qint64 bytes) {
     std::lock_guard lock(mutex_);
@@ -78,10 +83,17 @@ qint64 AudioBuffer::read(char *destination, qint64 bytes) {
                 static_cast<std::size_t>(bytes) - available * sizeof(float));
     if (started_ && available < count)
         ++underruns_;
+    if (trace_) {
+        const auto kind = !started_ ? AudioTrace::Kind::prefill
+                         : available < count ? AudioTrace::Kind::underrun : AudioTrace::Kind::read;
+        trace_->add({kind, 0, count, available, size_ + available, size_}, now);
+    }
     return bytes;
 }
 void AudioBuffer::clear(bool reset_metrics) {
     std::lock_guard lock(mutex_);
+    if (trace_)
+        trace_->add({AudioTrace::Kind::clear, 0, 0, 0, size_, 0});
     if (!reset_metrics)
         metrics_.discarded += size_;
     read_ = size_ = 0;
@@ -303,8 +315,12 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                 auto block = std::make_shared<sdr::Block>();
                 const auto read_began = std::chrono::steady_clock::now();
                 const bool has_data = source->read(*block);
-                maximum(max_source_read_ms_,
-                        milliseconds(std::chrono::steady_clock::now() - read_began));
+                const auto read_finished = std::chrono::steady_clock::now();
+                maximum(max_source_read_ms_, milliseconds(read_finished - read_began));
+                const auto sequence = block->sequence;
+                if (auto *trace = audio_.trace())
+                    trace->add({AudioTrace::Kind::iq_read, sequence, block->samples.size(), 0, 0, 0,
+                                0, AudioTrace::micros(read_finished - read_began)}, read_finished);
                 if (!has_data)
                     break;
                 if (block->samples.empty()) {
@@ -319,8 +335,12 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                 const auto enqueue_began = std::chrono::steady_clock::now();
                 const bool enqueued =
                     iq_.push_for(std::move(block), std::chrono::milliseconds(20), token);
-                maximum(max_enqueue_wait_ms_,
-                        milliseconds(std::chrono::steady_clock::now() - enqueue_began));
+                const auto enqueue_finished = std::chrono::steady_clock::now();
+                maximum(max_enqueue_wait_ms_, milliseconds(enqueue_finished - enqueue_began));
+                if (auto *trace = audio_.trace())
+                    trace->add({AudioTrace::Kind::iq_enqueue, sequence, count, enqueued ? count : 0,
+                                0, 0, 0, AudioTrace::micros(enqueue_finished - enqueue_began)},
+                               enqueue_finished);
                 if (!enqueued) {
                     if (token.stop_requested())
                         break;
@@ -590,7 +610,11 @@ void Engine::run(std::stop_token token) {
                         std::max(current_.max_dsp_ms,
                                  milliseconds(std::chrono::steady_clock::now() - dsp_began));
                     const auto push_began = std::chrono::steady_clock::now();
-                    audio_.push(audio_block_);
+                    if (auto *trace = audio_.trace())
+                        trace->add({AudioTrace::Kind::dsp, b.sequence, b.samples.size(),
+                                    audio_block_.size(), 0, 0, 0,
+                                    AudioTrace::micros(push_began - dsp_began)}, push_began);
+                    audio_.push(audio_block_, b.sequence);
                     current_.max_audio_push_ms =
                         std::max(current_.max_audio_push_ms,
                                  milliseconds(std::chrono::steady_clock::now() - push_began));
@@ -609,9 +633,14 @@ void Engine::run(std::stop_token token) {
                             current_.error = QString::fromUtf8(e.what());
                             event("record.error", current_.error);
                         }
+                        const auto record_finished = std::chrono::steady_clock::now();
+                        if (auto *trace = audio_.trace())
+                            trace->add({AudioTrace::Kind::record, b.sequence, audio_block_.size(),
+                                        0, 0, 0, 0, AudioTrace::micros(record_finished - record_began)},
+                                       record_finished);
                         current_.max_record_write_ms =
                             std::max(current_.max_record_write_ms,
-                                     milliseconds(std::chrono::steady_clock::now() - record_began));
+                                     milliseconds(record_finished - record_began));
                     }
                     current_.iq_samples += b.samples.size();
                     current_.power_db = demod_.power_db();

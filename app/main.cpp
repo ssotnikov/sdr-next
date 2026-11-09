@@ -28,7 +28,9 @@ int main(int argc, char **argv) {
 #endif
     QQuickStyle::setStyle("Fusion");
     qmlRegisterType<SpectrumItem>("SDR.Native", 1, 0, "SpectrumView");
-    Controller controller;
+    const auto args = app.arguments();
+    const auto endurance_index = args.indexOf("--endurance-dir");
+    Controller controller(nullptr, endurance_index >= 0 && args.contains("--trace-audio"));
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("receiver", &controller);
     QObject::connect(
@@ -38,9 +40,7 @@ int main(int argc, char **argv) {
     WindowChrome chrome(engine.rootObjects().isEmpty()
                             ? nullptr
                             : qobject_cast<QQuickWindow *>(engine.rootObjects().front()));
-    const auto args = app.arguments();
     std::unique_ptr<Endurance> endurance;
-    const auto endurance_index = args.indexOf("--endurance-dir");
     if (endurance_index >= 0) {
         const auto value = [&](const QString &flag, const QString &fallback) {
             const auto i = args.indexOf(flag);

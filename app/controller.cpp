@@ -17,7 +17,8 @@ QString localPath(const QString &value) {
     return url.isLocalFile() ? url.toLocalFile() : value;
 }
 } // namespace
-Controller::Controller(QObject *parent) : QObject(parent), engine_(audio_), device_(audio_) {
+Controller::Controller(QObject *parent, bool trace_audio)
+    : QObject(parent), audio_(trace_audio), engine_(audio_), device_(audio_) {
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     settings_path_ = directory + "/settings.json";
     if (QFile::exists(QCoreApplication::applicationDirPath() + "/portable.txt"))
@@ -131,6 +132,9 @@ void Controller::startAudio() {
     sink_->setBufferSize(2400 * sizeof(float));
     sink_->setVolume(static_cast<float>(volume_));
     connect(sink_.get(), &QAudioSink::stateChanged, this, [this](QtAudio::State state) {
+        if (auto *trace = audio_.trace(); trace && sink_)
+            trace->add({AudioTrace::Kind::sink_state, 0, static_cast<std::size_t>(state),
+                        static_cast<std::size_t>(sink_->error())});
         if (state == QtAudio::IdleState && sink_ && sink_->error() == QtAudio::UnderrunError)
             ++backend_underruns_;
         if (state == QtAudio::StoppedState && sink_ && sink_->error() != QtAudio::NoError) {

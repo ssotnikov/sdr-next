@@ -31,6 +31,12 @@ class Endurance final : public QObject {
     Controller &receiver_;
     QString directory_, prefix_, failure_;
     QFile metrics_;
+    QFile audio_trace_;
+    std::vector<AudioTrace::Event> trace_batch_, trace_previous_;
+    bool trace_started_ = false, trace_followup_ = false;
+    bool trace_truncated_ = false;
+    qint64 trace_bytes_ = 0;
+    QJsonObject trace_interval_;
     QTimer timer_;
     QElapsedTimer clock_, interval_;
     std::jthread probe_;
@@ -79,6 +85,61 @@ class Endurance final : public QObject {
             stop(false);
         }
     }
+    bool writeTrace(const std::vector<AudioTrace::Event> &batch) {
+        if (trace_truncated_ || batch.empty())
+            return true;
+        QByteArray bytes;
+        bytes.reserve(static_cast<qsizetype>(batch.size() * 80));
+        constexpr const char *names[] = {"iq_read", "iq_enqueue", "dsp", "push", "drop", "read",
+                                         "prefill", "underrun", "clear", "record", "sink_state"};
+        for (const auto &event : batch) {
+            bytes += QByteArray::number(static_cast<qlonglong>(event.time_us)) + ',' +
+                     names[static_cast<unsigned>(event.kind)] + ',' +
+                     QByteArray::number(static_cast<qulonglong>(event.block)) + ',' +
+                     QByteArray::number(static_cast<qulonglong>(event.frames)) + ',' +
+                     QByteArray::number(static_cast<qulonglong>(event.actual)) + ',' +
+                     QByteArray::number(static_cast<qulonglong>(event.before)) + ',' +
+                     QByteArray::number(static_cast<qulonglong>(event.after)) + ',' +
+                     QByteArray::number(static_cast<qlonglong>(event.duration_us)) + '\n';
+        }
+        constexpr qint64 max_trace_bytes = 128 * 1024 * 1024;
+        if (bytes.size() > max_trace_bytes - trace_bytes_) {
+            trace_truncated_ = true;
+            return true;
+        }
+        trace_bytes_ += bytes.size();
+        return audio_trace_.write(bytes) == bytes.size() && audio_trace_.flush();
+    }
+    bool collectTrace() {
+        auto *trace = receiver_.audioTrace();
+        if (!trace)
+            return true;
+        trace->take(trace_batch_);
+        using Kind = AudioTrace::Kind;
+        bool trigger = false;
+        std::int64_t minimum = -1;
+        for (const auto &event : trace_batch_) {
+            if (event.kind == Kind::read || event.kind == Kind::underrun) {
+                const auto after = static_cast<std::int64_t>(event.after);
+                minimum = minimum < 0 ? after : std::min(minimum, after);
+            }
+            trigger |= event.kind == Kind::underrun || event.kind == Kind::drop ||
+                       event.kind == Kind::clear || event.kind == Kind::sink_state;
+        }
+        trace_interval_ = {{"events", static_cast<qint64>(trace_batch_.size())},
+                           {"lost_total", static_cast<qint64>(trace->lost())},
+                           {"min_after_read_frames", minimum}};
+        if (trigger || trace_followup_ || (!trace_started_ && !trace_batch_.empty())) {
+            if (!writeTrace(trace_previous_) || !writeTrace(trace_batch_))
+                return false;
+            trace_previous_.clear();
+            trace_started_ = true;
+        } else {
+            trace_previous_.swap(trace_batch_);
+        }
+        trace_followup_ = trigger;
+        return true;
+    }
     void stop(bool complete) {
         if (stopping_)
             return;
@@ -109,6 +170,9 @@ class Endurance final : public QObject {
             {"ac_lost", ac_lost_},
             {"error", failure_},
             {"last_streaming_status", QJsonObject::fromVariantMap(last_status_)}};
+        if (auto *trace = receiver_.audioTrace())
+            result["audio_trace"] = QJsonObject{{"lost_total", static_cast<qint64>(trace->lost())},
+                                                {"truncated", trace_truncated_}};
         QFile file(directory_ + "/summary.json");
         if (file.open(QIODevice::WriteOnly)) {
             const auto data = QJsonDocument(result).toJson();
@@ -137,6 +201,11 @@ class Endurance final : public QObject {
     }
     void tick() {
         auto status = receiver_.status();
+        if (!collectTrace()) {
+            failure_ = "Cannot persist audio trace";
+            complete_ = false;
+            stop(false);
+        }
         if (stopping_) {
             if (!status["running"].toBool() && !status["recording"].toBool()) {
                 finish();
@@ -215,6 +284,8 @@ class Endurance final : public QObject {
         row["gui_spectra_published"] = static_cast<double>(published_);
         row["gui_queue_proxy_last_ms"] = queue_delays_.empty() ? -1 : queue_delays_.back();
         row["status"] = QJsonObject::fromVariantMap(status);
+        if (receiver_.audioTrace())
+            row["audio_trace"] = trace_interval_;
         last_status_ = status;
         append(row);
         if (!status["running"].toBool())
@@ -245,6 +316,14 @@ class Endurance final : public QObject {
         if (storage.bytesAvailable() < static_cast<qint64>(seconds * 96000 + 1073741824) ||
             !metrics_.open(QIODevice::WriteOnly | QIODevice::NewOnly))
             throw std::runtime_error("Insufficient disk space or cannot create metrics file");
+        if (receiver_.audioTrace()) {
+            audio_trace_.setFileName(directory + "/audio-trace.csv");
+            constexpr char header[] =
+                "time_us,kind,iq_sequence,frames,actual,queued_before,queued_after,duration_us\n";
+            if (!audio_trace_.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
+                audio_trace_.write(header, sizeof(header) - 1) != sizeof(header) - 1)
+                throw std::runtime_error("Cannot create audio trace");
+        }
         window->setTitle(QGuiApplication::applicationDisplayName() +
                          " endurance - 2.4 MSPS / WFM / WAV");
 #ifdef Q_OS_WIN

@@ -3,7 +3,8 @@ param(
     [string]$BuildDirectory = 'build/windows-device-msvc2026',
     [string]$RunDirectory = ('build/endurance/' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
     [string]$QtRoot = 'D:/Tools/sdr-build/Qt/6.10.0/msvc2022_64',
-    [string]$SoapyRuntime = 'D:/Tools/radioconda/Library/bin'
+    [string]$SoapyRuntime = 'D:/Tools/radioconda/Library/bin',
+    [switch]$TraceAudio
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -38,6 +39,7 @@ $metadata = [ordered]@{
     power_scheme = ((powercfg /getactivescheme) -join ' ')
     free_bytes = $space.AvailableFreeSpace
     profile = 'HackRF / 2.4 MSPS / 100 MHz / WFM / gain 16 / WAV mono PCM16 48 kHz'
+    trace_audio = $TraceAudio.IsPresent
     qt = '6.10.0 msvc2022_64'
     runtime_path = $SoapyRuntime
     runtime_sha256 = (Get-FileHash -LiteralPath (Join-Path $SoapyRuntime 'SoapySDR.dll')).Hash
@@ -62,6 +64,7 @@ $start.ArgumentList.Add('--endurance-seconds')
 $start.ArgumentList.Add($Seconds.ToString([Globalization.CultureInfo]::InvariantCulture))
 $start.ArgumentList.Add('--endurance-provider')
 $start.ArgumentList.Add('device:org.sdr.device.hackrf:')
+if ($TraceAudio) { $start.ArgumentList.Add('--trace-audio') }
 $start.RedirectStandardError = $true
 $process = [Diagnostics.Process]::Start($start)
 $errors = $process.StandardError.ReadToEndAsync()
