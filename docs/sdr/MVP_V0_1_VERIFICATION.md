@@ -4,7 +4,7 @@
 
 **Результат: предварительная Windows-сборка, полная приёмка MVP не завершена.** Код приёмника, DSP, GUI, записи, настроек, диагностики и SDK реализован. Наличие кода не закрывает обязательные аппаратные, платформенные и длительные проверки. Change остаётся активным, архивировать его пока нельзя.
 
-Прогон [после замены polling](RX_ENDURANCE_EVENT_RUN_2026-11-08.md) остановился после 2962 s с source timeout. Пользователь предположил отсоединение кабеля; причина не подтверждена журналом. По его поручению начат [отдельный повтор](RX_ENDURANCE_CABLE_RETRY_2026-11-08.md): **8 ноября 19:38 — 9 ноября 03:38 МСК**, статус RUNNING. Память выше 512 MiB; задача 7.4 остаётся открытой.
+Прогон [после замены polling](RX_ENDURANCE_EVENT_RUN_2026-11-08.md) остановился после 2962 s с source timeout. Пользователь предположил отсоединение кабеля; причина не подтверждена журналом. [Отдельный повтор](RX_ENDURANCE_CABLE_RETRY_2026-11-08.md) **8 ноября 19:38 — 9 ноября 03:38 МСК** завершил 8 часов без зарегистрированных разрывов IQ и переполнений; WAV финализирован. Приёмка не пройдена: 1 551 audio underrun, 29 audio drops, RAM 546,352 MiB, видимые интервалы спектра ниже порога. Задержки UI и аудио не измерены. Задача 7.4 остаётся открытой.
 
 2026-11-08 [восьмичасовой HackRF GUI/audio/WAV прогон](RX_ENDURANCE_RUN_2026-11-08.md) остановился с **FAIL** в 13:30 МСК после 2 ч 50 мин 50 с: IQ queue overflow 1, audio underrun 520, audio drops 43, working set до 531.652 MiB. WAV корректно финализирован. Задача 7.4 остаётся открытой, требуются диагностика и повторный полный прогон; UI input и physical audio latency не измерены.
 
@@ -96,7 +96,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 | demod-audio: Три режима демодуляции | core/src/dsp.cpp | Демодуляция контрольного сигнала — pass согласованных минимальных DSP тестов |
 | demod-audio: Изменение параметров канала | Demodulator::configure, Engine::start | Смена sample rate — DSP тесты трёх rates + offset, end-to-end hardware reconfigure partial |
 | demod-audio: Выбор аудиовыхода | Controller::setAudio/startAudio | Недоступное аудиоустройство — диагностика в коде, физический unplug not verified |
-| demod-audio: Непрерывность аудио | AudioBuffer, QAudioSink | Нехватка аудиоданных — счётчики/zero-fill, короткий GUI тест; 8 h not verified |
+| demod-audio: Непрерывность аудио | AudioBuffer, QAudioSink | Нехватка аудиоданных — счётчики/zero-fill; 8 h fail: 1 551 underrun, 29 drops |
 | spectrum-workspace: Спектр и waterfall | spectrum_item.cpp, Main.qml | Тон известной частоты — FFT pass, GUI frames pass; визуальная частотная калибровка partial |
 | spectrum-workspace: Управление частотой и видом | Main.qml, Controller | Изменение частоты — applied center/rate задают шкалу, zoom clamp pass; аппаратный tune protocol partial |
 | spectrum-workspace: Ограниченный docking | SplitView::moveItem, JSON layout | Восстановление раскладки — код/JSON tests, полный визуальный restart not verified |
@@ -116,7 +116,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 | settings-diagnostics: Приватность по умолчанию | Локальные QFile события, ручной export | Первый запуск и ошибка — автоматических network/crash-upload путей в коде нет; runtime network capture не выполнялся |
 | release-acceptance: Портативная поставка | package/smoke scripts | Запуск пакета — Windows startup/exit pass; весь RX/audio/SDK/storage и Linux package partial |
 | release-acceptance: Свидетельства аппаратной поддержки | этот отчёт, ADR-016 | Airspy недоступен для проверки — deferred по решению пользователя; совместимость по непроведённым испытаниям не заявлена; текущая HackRF matrix остаётся обязательной |
-| release-acceptance: Воспроизводимые benchmarks | core/src/bench.cpp | Измерение профиля — короткие 2.4/10/20 MSPS есть; полный metrics collection/burn-in not verified |
+| release-acceptance: Воспроизводимые benchmarks | core/src/bench.cpp, app/endurance.hpp | Короткие 2.4/10/20 MSPS есть; 8 h завершены, количественная приёмка не пройдена, физические задержки не измерены |
 | release-acceptance: Числовая приёмка после утверждения порогов | ADR-015, tests/core_tests.cpp | Пороги не согласованы — историческое условие теперь не наступает: пользователь их утвердил; числовой performance verdict всё ещё not evaluated |
 | release-acceptance: Аудит релизных зависимостей | notices/licenses/Qt SBOM/package inventory | Неожиданная зависимость в бинарнике — initial DLL inventory есть; финальный license/link audit not verified |
 | release-acceptance: Полнота MVP | tasks.md, F matrix | Завершение G6 — blocked, не архивируется |
@@ -131,7 +131,7 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 
 1. Оставшиеся утверждённые Windows/Linux окружения: Windows 10, финальные Linux build/QML/audio, X11/Wayland/HiDPI, USB permissions и Ubuntu 22.04 portable build. MSVC 2022 на Windows 11 теперь проверен.
 2. Полная применимая аппаратная tune/gain/options/unplug/reopen matrix HackRF. Реальные RTL-SDR/Airspy испытания отложены после MVP по ADR-016; их непроведение не является блокером текущего G6.
-3. Восьмичасовой профиль 2.4 MSPS с GUI/audio/recording и сырыми метриками CPU/RAM/new frames/UI p95/audio latency/drops. Короткие результаты выше не доказывают SLO.
+3. Устранить нарушения аудио, памяти и отображения; повторить восьмичасовой профиль 2.4 MSPS с видимым окном и без параллельных сборок. Отдельно измерить UI input p95 и физическую audio latency.
 4. Негативные SDK/init/lifecycle и storage fault-injection сценарии, ручное прослушивание на обеих ОС, полный restart/layout/DPI protocol.
 5. Портативные пакеты на чистых машинах, завершённый аудит фактических зависимостей и notices, повторный OpenSpec verify. После этого — синхронизация спецификаций и archive.
 

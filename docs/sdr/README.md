@@ -21,7 +21,7 @@
 - [Текущий тест с защищённым управлением](RX_ENDURANCE_GUARDED_RUN_2026-11-08.md).
 - [ADR-019: пробуждение RX worker](ADR-019-rx-worker-wakeup.md), [проверка изменения](RX_WORKER_WAKEUP_VERIFICATION.md).
 - [Текущий длительный RX после замены polling](RX_ENDURANCE_EVENT_RUN_2026-11-08.md).
-- [Текущий повтор после таймаута источника](RX_ENDURANCE_CABLE_RETRY_2026-11-08.md).
+- [Итоги восьмичасового повтора после таймаута источника](RX_ENDURANCE_CABLE_RETRY_2026-11-08.md).
 - [DSP API](DSP_API.md), [Plugin SDK](PLUGIN_SDK.md), [зависимости](DEPENDENCIES.md), [проверка реализации](MVP_V0_1_VERIFICATION.md).
 
 ## Происхождение и полнота
