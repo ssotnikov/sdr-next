@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -23,7 +24,7 @@ template <class F> void wait(F condition, const char *message) {
     throw std::runtime_error(message);
 }
 void check_audio_diagnostics() {
-    AudioBuffer traced(true);
+    AudioBuffer traced(true, false);
     std::vector<float> output(4801);
     const std::vector<float> block(4800, 0.25f);
     const auto read = [&](AudioBuffer &audio, std::size_t frames) {
@@ -57,7 +58,7 @@ void check_audio_diagnostics() {
 
     // 100 ms per iteration. One extra request every seven iterations is about 30 ppm.
     for (bool drift : {false, true}) {
-        AudioBuffer audio;
+        AudioBuffer audio(false, false);
         audio.push(std::vector<float>(500, 0.25f));
         for (int step = 1; step <= 3514; ++step) {
             audio.push(block);
@@ -67,12 +68,46 @@ void check_audio_diagnostics() {
               "Virtual-time audio consumption distinguishes matched clocks and sustained deficit");
     }
 }
+void check_playback_clock() {
+    const std::vector<float> input(4800, 0.25f);
+    std::vector<float> output(4801);
+    for (const int skew : {-1, 1}) {
+        AudioBuffer audio;
+        audio.push(std::vector<float>(skew > 0 ? 500 : 6700, 0.25f));
+        for (int step = 1; step <= 3514; ++step) {
+            audio.push(input);
+            const auto requested = 4800 + (step % 7 == 0 ? skew : 0);
+            audio.read(reinterpret_cast<char *>(output.data()), requested * sizeof(float));
+        }
+        check(audio.underruns() == 0 && audio.drops() == 0,
+              "Playback holds audio reserve with a 30 ppm mismatch in either direction");
+        check(output.front() == 0.25f, "Clock compensation preserves a constant signal");
+        const auto stats = audio.metrics();
+        check(stats.queued >= 3300 && stats.queued <= 3900 &&
+                  skew * stats.correction_ppm < 0 && std::abs(stats.correction_ppm) <= 1000,
+              "Playback reserve converges with bounded correction in the expected direction");
+        check(stats.accepted == stats.consumed + stats.queued &&
+                  stats.requested == stats.delivered && stats.delivered != stats.consumed,
+              "Interpolated output and source consumption are accounted separately");
+        audio.read(reinterpret_cast<char *>(output.data()), 4800 * sizeof(float));
+        check(audio.underruns() == 1 && output[4799] == 0,
+              "A real producer pause still reports underrun and pads the missing output");
+        audio.clear(false);
+        check(audio.metrics().correction_ppm == 0 && audio.metrics().queued == 0,
+              "Reset clears the playback controller and FIFO");
+        audio.push(std::vector<float>(4800, -0.25f));
+        audio.read(reinterpret_cast<char *>(output.data()), 4800 * sizeof(float));
+        check(output.front() == -0.25f && output[4799] == -0.25f,
+              "Restart does not interpolate across the old stream");
+    }
+}
 } // namespace
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("sdr-app-engine-tests");
     QStandardPaths::setTestModeEnabled(true);
     try {
+        check_playback_clock();
         check_audio_diagnostics();
         QTemporaryDir folder;
         check(folder.isValid(), "Temporary directory");
@@ -82,12 +117,13 @@ int main(int argc, char **argv) {
         audio.read(probe, sizeof(probe));
         auto counts = audio.metrics();
         check(counts.input == 5000 && counts.accepted == 5000 && counts.requested == 400 &&
-                  counts.delivered == 400 && counts.queued == 4600 && counts.discarded == 0,
+                  counts.delivered == 400 && counts.consumed == 400 &&
+                  counts.queued == 4600 && counts.discarded == 0,
               "Audio frame accounting at actual push/read seam");
         audio.clear(false);
         counts = audio.metrics();
         check(counts.discarded == 4600 && counts.queued == 0 &&
-                  counts.accepted == counts.delivered + counts.discarded,
+                  counts.accepted == counts.consumed + counts.discarded,
               "Cleared audio is accounted without losing session metrics");
         audio.clear();
         check(audio.metrics().input == 0 && audio.metrics().discarded == 0,

@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sdr/bounded_queue.hpp>
 #include <sdr/device.hpp>
 #include <sdr/dsp.hpp>
@@ -18,13 +19,14 @@
 
 class AudioBuffer {
   public:
-    explicit AudioBuffer(bool trace = false)
-        : trace_(trace ? std::make_unique<AudioTrace>() : nullptr) {}
+    explicit AudioBuffer(bool trace = false, bool adaptive = true)
+        : trace_(trace ? std::make_unique<AudioTrace>() : nullptr), adaptive_(adaptive) {}
     AudioTrace *trace() const { return trace_.get(); }
     struct Metrics {
-        std::uint64_t input = 0, accepted = 0, requested = 0, delivered = 0, discarded = 0;
+        std::uint64_t input = 0, accepted = 0, requested = 0, delivered = 0, consumed = 0, discarded = 0;
         std::size_t queued = 0;
         double max_read_gap_ms = 0, max_push_gap_ms = 0;
+        double correction_ppm = 0;
     };
     Metrics metrics();
     void push(std::span<const float>, std::uint64_t block = 0);
@@ -35,12 +37,15 @@ class AudioBuffer {
 
   private:
     const std::unique_ptr<AudioTrace> trace_;
+    const bool adaptive_;
     std::mutex mutex_;
     std::vector<float> data_ = std::vector<float>(12000);
     std::size_t read_ = 0, size_ = 0;
     bool started_ = false;
     std::atomic<std::uint64_t> underruns_{0}, drops_{0};
     Metrics metrics_;
+    double filtered_reserve_ = 3600, phase_ = 0;
+    std::optional<float> previous_sample_;
     std::chrono::steady_clock::time_point last_read_{}, last_push_{};
 };
 struct Snapshot {

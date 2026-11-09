@@ -28,7 +28,8 @@ class Controller final : public QObject {
     Q_PROPERTY(QStringList audioOutputs READ audioOutputs CONSTANT)
     Q_PROPERTY(QVariantMap settings READ settings CONSTANT)
   public:
-    explicit Controller(QObject *parent = nullptr, bool trace_audio = false);
+    explicit Controller(QObject *parent = nullptr, bool trace_audio = false,
+                        bool adaptive_audio = true);
     ~Controller() override;
     QVariantMap status() const { return status_; }
     QVariantList devices() const { return devices_; }

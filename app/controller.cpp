@@ -17,8 +17,8 @@ QString localPath(const QString &value) {
     return url.isLocalFile() ? url.toLocalFile() : value;
 }
 } // namespace
-Controller::Controller(QObject *parent, bool trace_audio)
-    : QObject(parent), audio_(trace_audio), engine_(audio_), device_(audio_) {
+Controller::Controller(QObject *parent, bool trace_audio, bool adaptive_audio)
+    : QObject(parent), audio_(trace_audio, adaptive_audio), engine_(audio_), device_(audio_) {
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     settings_path_ = directory + "/settings.json";
     if (QFile::exists(QCoreApplication::applicationDirPath() + "/portable.txt"))
@@ -250,7 +250,9 @@ void Controller::poll() {
                {"audioFramesAccepted", static_cast<qulonglong>(audio_metrics.accepted)},
                {"audioFramesRequested", static_cast<qulonglong>(audio_metrics.requested)},
                {"audioFramesDelivered", static_cast<qulonglong>(audio_metrics.delivered)},
+               {"audioFramesConsumed", static_cast<qulonglong>(audio_metrics.consumed)},
                {"audioFramesDiscarded", static_cast<qulonglong>(audio_metrics.discarded)},
+               {"audioRateCorrectionPpm", audio_metrics.correction_ppm},
                {"audioQueuedFrames", static_cast<qulonglong>(audio_metrics.queued)},
                {"maxAudioReadGapMs", audio_metrics.max_read_gap_ms},
                {"maxAudioPushGapMs", audio_metrics.max_push_gap_ms},

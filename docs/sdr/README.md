@@ -49,3 +49,5 @@
 - [Предложения дополнений MVP по UI SDR#](SDRSHARP_MVP_FEATURE_REVIEW.md) — анализ, не утверждённое расширение.
 
 - [Фиксированное получение зависимостей](ADR-023-pinned-dependency-acquisition.md), [протокол проверки](DEPENDENCY_ACQUISITION_VERIFICATION.md).
+
+- [Компенсация темпа воспроизведения](ADR-024-playback-clock-compensation.md), [план диагностики аудио](AUDIO_UNDERRUN_DIAGNOSTICS_PLAN.md).

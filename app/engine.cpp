@@ -70,23 +70,63 @@ qint64 AudioBuffer::read(char *destination, qint64 bytes) {
     const auto count = static_cast<std::size_t>(bytes) / sizeof(float);
     if (size_ >= std::max<std::size_t>(4800, std::min(count, data_.size())))
         started_ = true;
-    std::size_t available = started_ ? std::min(count, size_) : 0;
-    metrics_.requested += count;
-    metrics_.delivered += available;
-    for (std::size_t i = 0; i < available; ++i) {
-        const float v = data_[read_];
-        std::memcpy(destination + i * sizeof(float), &v, sizeof(float));
-        read_ = (read_ + 1) % data_.size();
-        --size_;
+    const auto before = size_;
+    double step = 1;
+    if (adaptive_ && started_) {
+        constexpr double target_reserve = 3600;
+        constexpr double gain_ppm_per_frame = 0.5;
+        constexpr double limit_ppm = 1000;
+        // Use requested frames as the time base, independent of callback jitter.
+        const auto reserve = static_cast<double>(size_) - static_cast<double>(count);
+        const auto weight = -std::expm1(-static_cast<double>(count) / (2.0 * sdr::audio_rate));
+        filtered_reserve_ += weight * (reserve - filtered_reserve_);
+        metrics_.correction_ppm = std::clamp((filtered_reserve_ - target_reserve) *
+                                                 gain_ppm_per_frame, -limit_ppm, limit_ppm);
+        step += metrics_.correction_ppm * 1e-6;
     }
+    metrics_.requested += count;
+    std::size_t available = 0;
+    while (started_ && available < count && size_ > 0) {
+        const auto current = data_[read_];
+        auto value = current;
+        if (phase_ != 0 && size_ > 1) {
+            const auto previous = previous_sample_.value_or(current);
+            const auto next = data_[(read_ + 1) % data_.size()];
+            const auto following = size_ > 2 ? data_[(read_ + 2) % data_.size()] : next;
+            // Catmull–Rom interpolation at a continuous fractional source position.
+            value = static_cast<float>(
+                current + 0.5 * phase_ *
+                              (next - previous +
+                               phase_ * (2 * previous - 5 * current + 4 * next - following +
+                                         phase_ * (3 * (current - next) + following - previous))));
+        }
+        std::memcpy(destination + available * sizeof(float), &value, sizeof(float));
+        ++available;
+        phase_ += step;
+        const auto advance = static_cast<std::size_t>(phase_);
+        phase_ -= static_cast<double>(advance);
+        const auto consumed = std::min(advance, size_);
+        if (consumed != 0) {
+            previous_sample_ = data_[(read_ + consumed - 1) % data_.size()];
+            read_ = (read_ + consumed) % data_.size();
+            size_ -= consumed;
+        }
+        if (advance > consumed)
+            phase_ = 0;
+    }
+    metrics_.delivered += available;
+    metrics_.consumed += before - size_;
     std::memset(destination + available * sizeof(float), 0,
                 static_cast<std::size_t>(bytes) - available * sizeof(float));
-    if (started_ && available < count)
+    if (started_ && available < count) {
         ++underruns_;
+        phase_ = 0;
+        previous_sample_.reset();
+    }
     if (trace_) {
         const auto kind = !started_ ? AudioTrace::Kind::prefill
                          : available < count ? AudioTrace::Kind::underrun : AudioTrace::Kind::read;
-        trace_->add({kind, 0, count, available, size_ + available, size_}, now);
+        trace_->add({kind, 0, count, available, before, size_}, now);
     }
     return bytes;
 }
@@ -98,6 +138,10 @@ void AudioBuffer::clear(bool reset_metrics) {
         metrics_.discarded += size_;
     read_ = size_ = 0;
     started_ = false;
+    filtered_reserve_ = 3600;
+    phase_ = 0;
+    previous_sample_.reset();
+    metrics_.correction_ppm = 0;
     if (reset_metrics) {
         underruns_ = drops_ = 0;
         metrics_ = {};

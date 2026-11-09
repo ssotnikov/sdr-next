@@ -30,7 +30,8 @@ int main(int argc, char **argv) {
     qmlRegisterType<SpectrumItem>("SDR.Native", 1, 0, "SpectrumView");
     const auto args = app.arguments();
     const auto endurance_index = args.indexOf("--endurance-dir");
-    Controller controller(nullptr, endurance_index >= 0 && args.contains("--trace-audio"));
+    Controller controller(nullptr, endurance_index >= 0 && args.contains("--trace-audio"),
+                          endurance_index < 0 || !args.contains("--fixed-audio-rate"));
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("receiver", &controller);
     QObject::connect(
