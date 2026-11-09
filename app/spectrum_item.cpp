@@ -5,11 +5,32 @@
 #include <QSGSimpleTextureNode>
 #include <algorithm>
 #include <cmath>
-#include <cstring>
+#include <memory>
+
+class SpectrumItem::Scene : public QSGNode {
+  public:
+    struct Tile {
+        std::unique_ptr<QSGTexture> texture;
+        qint64 image_key = 0;
+    };
+    std::array<Tile, tile_count> tiles;
+    std::array<QSGSimpleTextureNode *, tile_count + 1> strips{};
+    QSGGeometryNode *line = nullptr;
+
+    ~Scene() override {
+        while (auto *node = firstChild()) {
+            removeChildNode(node);
+            delete node;
+        }
+    }
+};
 
 SpectrumItem::SpectrumItem(QQuickItem *parent) : QQuickItem(parent) {
     setFlag(ItemHasContents, true);
-    history_.fill(QColor("#0a0d10"));
+    for (auto &tile : history_) {
+        tile = QImage(bins, rows_per_tile, QImage::Format_RGB32);
+        tile.fill(QColor("#0a0d10"));
+    }
 }
 void SpectrumItem::setSpan(double v) {
     v = std::clamp(v, 0.02, 1.0);
@@ -33,8 +54,8 @@ void SpectrumItem::setColorMap(int v) {
     if (color_map_ == v)
         return;
     color_map_ = v;
-    history_.fill(QColor("#0a0d10"));
-    dirty_ = true;
+    for (auto &tile : history_)
+        tile.fill(QColor("#0a0d10"));
     emit viewChanged();
     update();
 }
@@ -87,28 +108,24 @@ QColor SpectrumItem::waterfallColor(double level) const {
     return QColor::fromHsvF(0.68 - 0.55 * level, 0.8, 0.08 + 0.92 * level);
 }
 void SpectrumItem::setFrame(const QList<float> &frame) {
-    if (frame.size() != 2048)
+    if (frame.size() != bins)
         return;
     frame_ = frame;
-    std::memmove(history_.bits() + history_.bytesPerLine(), history_.bits(),
-                 static_cast<std::size_t>(history_.bytesPerLine()) * (history_.height() - 1));
-    auto *row = reinterpret_cast<QRgb *>(history_.scanLine(0));
-    for (int i = 0; i < history_.width(); ++i) {
+    newest_row_ = (newest_row_ + history_rows - 1) % history_rows;
+    auto &tile = history_[newest_row_ / rows_per_tile];
+    auto *row = reinterpret_cast<QRgb *>(tile.scanLine(newest_row_ % rows_per_tile));
+    for (int i = 0; i < bins; ++i) {
         const double level = std::clamp((frame[i] + 110) / 95.0, 0.0, 1.0);
         row[i] = waterfallColor(level).rgb();
     }
-    dirty_ = true;
     update();
 }
 QSGNode *SpectrumItem::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
-    auto *root = old;
+    auto *root = static_cast<Scene *>(old);
     if (!root) {
-        root = new QSGNode;
-        auto *texture = new QSGSimpleTextureNode;
-        texture->setOwnsTexture(true);
-        root->appendChildNode(texture);
+        root = new Scene;
         auto *line = new QSGGeometryNode;
-        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), 2048);
+        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), bins);
         geometry->setDrawingMode(QSGGeometry::DrawLineStrip);
         line->setGeometry(geometry);
         line->setFlag(QSGNode::OwnsGeometry);
@@ -116,35 +133,66 @@ QSGNode *SpectrumItem::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
         material->setColor(trace_color_);
         line->setMaterial(material);
         line->setFlag(QSGNode::OwnsMaterial);
+        root->line = line;
         root->appendChildNode(line);
-        dirty_ = true;
     }
-    auto *texture = static_cast<QSGSimpleTextureNode *>(root->firstChild());
-    if (dirty_) {
-        auto *next = window()->createTextureFromImage(history_);
-        if (next) {
-            auto *previous = texture->texture();
-            // Detach while the old texture is still valid: setTexture inspects it.
-            texture->setOwnsTexture(false);
-            texture->setTexture(next);
-            texture->setOwnsTexture(true);
-            delete previous;
-            dirty_ = false;
+    // Keep the old textures alive until every strip has moved to its new texture.
+    std::array<std::unique_ptr<QSGTexture>, tile_count> previous;
+    for (int i = 0; i < tile_count; ++i) {
+        auto &tile = root->tiles[i];
+        const auto key = history_[i].cacheKey();
+        if (tile.image_key != key) {
+            if (auto *next = window()->createTextureFromImage(history_[i])) {
+                previous[i] = std::move(tile.texture);
+                tile.texture.reset(next);
+                tile.image_key = key;
+            }
         }
     }
     const qreal spectrumHeight = height() * 0.36;
-    texture->setRect(0, spectrumHeight, width(), height() - spectrumHeight);
-    texture->setSourceRect((position_ - span_ / 2) * history_.width(), 0, span_ * history_.width(),
-                           history_.height());
-    auto *line = static_cast<QSGGeometryNode *>(root->lastChild());
+    const qreal row_height = (height() - spectrumHeight) / history_rows;
+    int drawn = 0;
+    int row = newest_row_;
+    for (auto *&strip : root->strips) {
+        if (drawn == history_rows) {
+            if (strip) {
+                root->removeChildNode(strip);
+                delete strip;
+                strip = nullptr;
+            }
+            continue;
+        }
+        const int offset = row % rows_per_tile;
+        const int count = std::min(rows_per_tile - offset, history_rows - drawn);
+        auto *texture = root->tiles[row / rows_per_tile].texture.get();
+        if (texture) {
+            if (!strip) {
+                strip = new QSGSimpleTextureNode;
+                strip->setTexture(texture);
+                root->insertChildNodeBefore(strip, root->line);
+            } else if (strip->texture() != texture) {
+                strip->setTexture(texture);
+            }
+            strip->setRect(0, spectrumHeight + drawn * row_height, width(), count * row_height);
+            strip->setSourceRect((position_ - span_ / 2) * bins, offset, span_ * bins, count);
+        } else if (strip) {
+            root->removeChildNode(strip);
+            delete strip;
+            strip = nullptr;
+        }
+        drawn += count;
+        row = (row + count) % history_rows;
+    }
+    auto *line = root->line;
     static_cast<QSGFlatColorMaterial *>(line->material())->setColor(trace_color_);
     line->markDirty(QSGNode::DirtyMaterial);
     auto *points = line->geometry()->vertexDataAsPoint2D();
-    for (int i = 0; i < 2048; ++i) {
+    for (int i = 0; i < bins; ++i) {
         const auto bin = std::clamp(
-            static_cast<int>((position_ - span_ / 2 + span_ * i / 2047) * 2047), 0, 2047);
+            static_cast<int>((position_ - span_ / 2 + span_ * i / (bins - 1)) * (bins - 1)),
+            0, bins - 1);
         const double value = frame_.isEmpty() ? -120 : frame_[bin];
-        points[i].set(static_cast<float>(width() * i / 2047),
+        points[i].set(static_cast<float>(width() * i / (bins - 1)),
                       static_cast<float>(spectrumHeight * std::clamp(-value / 120, 0.0, 1.0)));
     }
     line->markDirty(QSGNode::DirtyGeometry);

@@ -367,6 +367,7 @@ void Engine::start(const std::string &id, sdr::Config requested) {
     current_.max_record_write_ms = current_.max_worker_gap_ms = current_.max_publish_ms = 0;
     current_.max_spectrum_ms = current_.max_audio_push_ms = current_.max_block_ms = 0;
     last_block_time_ = {};
+    next_spectrum_time_ = {};
     {
         std::lock_guard lock(failure_mutex_);
         acquisition_failure_.clear();
@@ -758,14 +759,17 @@ void Engine::run(std::stop_token token) {
                     }
                     current_.iq_samples += b.samples.size();
                     current_.power_db = demod_.power_db();
-                    if (began - frame_time_ >= std::chrono::milliseconds(50)) {
+                    if (began >= next_spectrum_time_) {
+                        constexpr auto period = std::chrono::milliseconds(50);
+                        if (next_spectrum_time_ == std::chrono::steady_clock::time_point{})
+                            next_spectrum_time_ = began;
+                        next_spectrum_time_ += period * (1 + (began - next_spectrum_time_) / period);
                         const auto spectrum_began = std::chrono::steady_clock::now();
                         current_.spectrum = sdr::spectrum(b.samples);
                         current_.max_spectrum_ms = std::max(
                             current_.max_spectrum_ms,
                             milliseconds(std::chrono::steady_clock::now() - spectrum_began));
                         ++current_.frame;
-                        frame_time_ = began;
                     }
                     current_.processing_ms = std::chrono::duration<double, std::milli>(
                                                  std::chrono::steady_clock::now() - began)

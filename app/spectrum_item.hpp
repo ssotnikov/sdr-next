@@ -2,6 +2,7 @@
 #include <QImage>
 #include <QQuickItem>
 #include <QVariantList>
+#include <array>
 
 class SpectrumItem : public QQuickItem {
     Q_OBJECT
@@ -32,12 +33,15 @@ class SpectrumItem : public QQuickItem {
     QSGNode *updatePaintNode(QSGNode *, UpdatePaintNodeData *) override;
 
   private:
+    class Scene;
+    static constexpr int bins = 2048, rows_per_tile = 32, tile_count = 8;
+    static constexpr int history_rows = rows_per_tile * tile_count;
     double span_ = 1, position_ = 0.5;
     int color_map_ = 0;
     QColor trace_color_{"#8fd8ff"};
     QVariantList waterfall_stops_;
     QList<QRgb> waterfall_lut_;
-    bool dirty_ = true;
     QList<float> frame_;
-    QImage history_{2048, 256, QImage::Format_RGB32};
+    std::array<QImage, tile_count> history_;
+    int newest_row_ = 0;
 };

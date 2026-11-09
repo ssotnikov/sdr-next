@@ -118,7 +118,7 @@ class Engine {
     QString metadata_path_, session_id_;
     QJsonArray recording_gaps_;
     QJsonObject metadata_;
-    std::chrono::steady_clock::time_point frame_time_{};
+    std::chrono::steady_clock::time_point next_spectrum_time_{};
     std::chrono::steady_clock::time_point last_block_time_{};
     void run(std::stop_token);
     void publish();

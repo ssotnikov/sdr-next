@@ -15,6 +15,27 @@ TestCase {
     }
     function cleanupTestCase() { receiver.stop(); appWindow.close(); appWindow.destroy() }
     function cleanup() { receiver.stop(); tryVerify(function() { return !receiver.status.running }, 10000) }
+    function test_waterfall_wrap_and_tile_order() {
+        const window = Qt.createQmlObject(
+            "import QtQuick; import SDR.Native 1.0; Window { width: 80; height: 400; visible: true; "
+            + "SpectrumView { objectName: 'testSpectrum'; anchors.fill: parent; colorMap: 1 } }",
+            appWindow)
+        const item = findChild(window.contentItem, "testSpectrum")
+        verify(item !== null)
+        const dark = Array(2048).fill(-110)
+        const bright = Array(2048).fill(-15)
+        for (let i = 0; i <= 256; ++i)
+            item.setFrame(i === 1 || i === 224 || i === 225 || i === 256 ? bright : dark)
+        verify(waitForRendering(item))
+        const image = grabImage(item)
+        const x = Math.floor(image.width / 2)
+        const row = (n) => Math.floor((144 + n + 0.5) * image.height / 400)
+        for (const n of [0, 31, 32, 255])
+            compare(image.pixel(x, row(n)).toString(), "#ffbf40", "Bright row " + n)
+        for (const n of [1, 30, 33, 254])
+            compare(image.pixel(x, row(n)).toString(), "#000000", "Dark row " + n)
+        window.destroy()
+    }
     function test_brand_theme() {
         const brand = findChild(appWindow, "brandTheme")
         verify(brand !== null)
