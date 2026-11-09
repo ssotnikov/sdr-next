@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <sdr/device.hpp>
 #include <stdexcept>
@@ -55,6 +56,13 @@ DeviceModule::DeviceModule(const std::filesystem::path &path, const std::string 
             !api_.destroy || !api_.read || !api_.last_error)
             throw std::runtime_error(
                 "Device module rejected: library, entrypoint, ABI or identity mismatch");
+#ifdef _WIN32
+        diagnostic_read_ = reinterpret_cast<sdr_device_read_diagnostics_v1_fn>(
+            GetProcAddress(static_cast<HMODULE>(library_), "sdr_device_read_diagnostics_v1"));
+#else
+        diagnostic_read_ = reinterpret_cast<sdr_device_read_diagnostics_v1_fn>(
+            dlsym(library_, "sdr_device_read_diagnostics_v1"));
+#endif
     } catch (...) {
         close_library(library_);
         library_ = nullptr;
@@ -144,15 +152,27 @@ DeviceSource::~DeviceSource() {
         module_->api().destroy(instance_);
 }
 bool DeviceSource::read(Block &b) {
+    return read(b, nullptr);
+}
+bool DeviceSource::read(Block &b, DeviceReadTrace *trace) {
+    if (trace)
+        *trace = {};
+    b.sequence = sequence_;
     uint32_t count = 0, flags = 0;
-    const auto result = module_->api().read(instance_, scratch_.data(),
-                                            static_cast<uint32_t>(scratch_.size()), &count, &flags);
+    const auto diagnostic_read = module_->diagnostic_read();
+    const auto capacity = static_cast<uint32_t>(scratch_.size());
+    const auto result = trace && diagnostic_read
+                            ? diagnostic_read(instance_, scratch_.data(), capacity, &count, &flags,
+                                              &trace->driver)
+                            : module_->api().read(instance_, scratch_.data(), capacity, &count, &flags);
     if (result == SDR_EOF)
         return false;
     if (result != SDR_OK)
         throw std::runtime_error(module_->error());
     if (count > scratch_.size() || (flags & ~SDR_DEVICE_DISCONTINUITY))
         throw std::runtime_error("Device module exceeded IQ capacity or returned invalid flags");
+    using Clock = std::chrono::steady_clock;
+    const auto conversion_began = trace ? Clock::now() : Clock::time_point{};
     b.samples.resize(count);
     b.sample_index = index_;
     b.sequence = sequence_++;
@@ -162,6 +182,9 @@ bool DeviceSource::read(Block &b) {
             throw std::runtime_error("Device module returned non-finite IQ");
         b.samples[i] = {scratch_[i].i, scratch_[i].q};
     }
+    if (trace)
+        trace->conversion_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                   Clock::now() - conversion_began).count();
     index_ += count;
     return true;
 }

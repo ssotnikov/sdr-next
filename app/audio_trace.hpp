@@ -20,6 +20,8 @@ class AudioTrace {
         std::int64_t time_us = 0, duration_us = 0;
         std::int64_t thread_cpu_us = -1;
         std::uint32_t thread_id = 0;
+        std::int64_t driver_us = -1, conversion_us = -1;
+        std::int32_t driver_result = 0;
     };
     static constexpr std::size_t capacity = 4096;
 

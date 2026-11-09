@@ -2,6 +2,7 @@
 #include "soapy_api.hpp"
 #include <SoapySDR/Formats.h>
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
@@ -95,12 +96,20 @@ class Hardware final : public Receiver {
         stream_ = nullptr;
     }
     ~Hardware() override { cleanup(); }
-    void read(sdr_iq *out, uint32_t capacity, uint32_t &count, uint32_t &result_flags) override {
+    void read(sdr_iq *out, uint32_t capacity, uint32_t &count, uint32_t &result_flags,
+              sdr_device_read_metrics_v1 *metrics) override {
         void *buffers[] = {out};
         int flags = 0;
         long long time = 0;
-        const int n = soapy::api().SoapySDRDevice_readStream(device_, stream_, buffers, capacity,
-                                                             &flags, &time, 100000);
+        const auto read_stream = soapy::api().SoapySDRDevice_readStream;
+        using Clock = std::chrono::steady_clock;
+        const auto began = metrics ? Clock::now() : Clock::time_point{};
+        const int n = read_stream(device_, stream_, buffers, capacity, &flags, &time, 100000);
+        if (metrics) {
+            metrics->driver_us =
+                std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - began).count();
+            metrics->driver_result = n;
+        }
         count = 0;
         result_flags = 0;
         if (n == SOAPY_SDR_TIMEOUT)

@@ -7,7 +7,8 @@ namespace device_backend {
 class Receiver {
   public:
     virtual ~Receiver() = default;
-    virtual void read(sdr_iq *, uint32_t capacity, uint32_t &count, uint32_t &flags) = 0;
+    virtual void read(sdr_iq *, uint32_t capacity, uint32_t &count, uint32_t &flags,
+                      sdr_device_read_metrics_v1 *) = 0;
 };
 std::vector<sdr_device_info> enumerate(const std::string &family);
 std::unique_ptr<Receiver> open(const std::string &key, sdr_device_config &actual);

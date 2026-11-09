@@ -41,9 +41,11 @@ int main(int argc, char **argv) {
             sdr::Block block;
             check(source.read(block) && block.samples.size() == sdr::block_size,
                   "Module retained during IQ read");
-            check(source.read(block) && block.sample_index == sdr::block_size &&
-                      block.sequence == 1,
-                  "IQ sequence and sample index");
+            sdr::DeviceReadTrace trace;
+            check(source.read(block, &trace) && block.sample_index == sdr::block_size &&
+                      block.sequence == 1 && block.samples.size() == sdr::block_size &&
+                      trace.driver.driver_us == -1 && trace.conversion_us >= 0,
+                  "Diagnostics fall back to the legacy ABI and measure conversion");
         }
         module = std::make_shared<sdr::DeviceModule>(argv[1]);
         rejects([&] { sdr::DeviceSource source(module, "example:1", c); });

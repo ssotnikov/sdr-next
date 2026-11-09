@@ -62,15 +62,18 @@ void *SDR_CALL create(const char *key, const sdr_device_config *requested,
 void SDR_CALL destroy(void *instance) {
     delete static_cast<device_backend::Receiver *>(instance);
 }
-int32_t SDR_CALL read(void *instance, sdr_iq *out, uint32_t capacity, uint32_t *count,
-                      uint32_t *flags) {
+int32_t read_impl(void *instance, sdr_iq *out, uint32_t capacity, uint32_t *count,
+                  uint32_t *flags, sdr_device_read_metrics_v1 *metrics) {
     try {
         error[0] = 0;
+        if (metrics)
+            *metrics = {-1, 0};
         if (!instance || !out || !capacity || !count || !flags)
             throw std::runtime_error("Invalid IQ buffers");
         *count = 0;
         *flags = 0;
-        static_cast<device_backend::Receiver *>(instance)->read(out, capacity, *count, *flags);
+        static_cast<device_backend::Receiver *>(instance)->read(out, capacity, *count, *flags,
+                                                               metrics);
         return SDR_OK;
     } catch (const std::exception &e) {
         set_error(e.what());
@@ -79,10 +82,20 @@ int32_t SDR_CALL read(void *instance, sdr_iq *out, uint32_t capacity, uint32_t *
     }
     return SDR_ERROR;
 }
+int32_t SDR_CALL read(void *instance, sdr_iq *out, uint32_t capacity, uint32_t *count,
+                      uint32_t *flags) {
+    return read_impl(instance, out, capacity, count, flags, nullptr);
+}
 const char *SDR_CALL last_error() {
     return error;
 }
 } // namespace
+extern "C" SDR_EXPORT int32_t SDR_CALL sdr_device_read_diagnostics_v1(
+    void *instance, sdr_iq *out, uint32_t capacity, uint32_t *count, uint32_t *flags,
+    sdr_device_read_metrics_v1 *metrics) {
+    return read_impl(instance, out, capacity, count, flags, metrics);
+}
+
 extern "C" SDR_EXPORT int32_t SDR_CALL sdr_device_plugin_init(uint32_t major, uint32_t minor,
                                                               sdr_device_api *out) {
     if (major != SDR_DEVICE_ABI_MAJOR || minor < SDR_DEVICE_ABI_MINOR || !out ||

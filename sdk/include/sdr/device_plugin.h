@@ -38,6 +38,17 @@ typedef struct sdr_device_api {
                             uint32_t *flags);
     const char *(SDR_CALL *last_error)(void);
 } sdr_device_api;
+/* Optional sdr_device_read_diagnostics_v1 export. Same read contract as read().
+ * driver_us is -1 when unavailable. Otherwise driver_result is the native
+ * driver result, including errors mapped to empty successful reads by read().
+ */
+typedef struct sdr_device_read_metrics_v1 {
+    int64_t driver_us;
+    int32_t driver_result;
+} sdr_device_read_metrics_v1;
+typedef int32_t(SDR_CALL *sdr_device_read_diagnostics_v1_fn)(
+    void *instance, sdr_iq *out, uint32_t capacity, uint32_t *count, uint32_t *flags,
+    sdr_device_read_metrics_v1 *metrics);
 /* enumerate(0) starts a fresh snapshot, SDR_EOF terminates it (max 256 devices).
  * All strings are UTF-8 and NUL-terminated. Host owns descriptors/config/IQ buffers.
  * create/destroy own the opaque instance; borrowed pointers never outlive a call.

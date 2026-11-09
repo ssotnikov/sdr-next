@@ -89,7 +89,7 @@ class Endurance final : public QObject {
         if (trace_truncated_ || batch.empty())
             return true;
         QByteArray bytes;
-        bytes.reserve(static_cast<qsizetype>(batch.size() * 80));
+        bytes.reserve(static_cast<qsizetype>(batch.size() * 96));
         constexpr const char *names[] = {"iq_read", "iq_enqueue", "dsp", "push", "drop", "read",
                                          "prefill", "underrun", "clear", "record", "sink_state",
                                          "iq_dequeue"};
@@ -103,7 +103,10 @@ class Endurance final : public QObject {
                      QByteArray::number(static_cast<qulonglong>(event.after)) + ',' +
                      QByteArray::number(static_cast<qlonglong>(event.duration_us)) + ',' +
                      QByteArray::number(static_cast<qlonglong>(event.thread_cpu_us)) + ',' +
-                     QByteArray::number(event.thread_id) + '\n';
+                     QByteArray::number(event.thread_id) + ',' +
+                     QByteArray::number(static_cast<qlonglong>(event.driver_us)) + ',' +
+                     QByteArray::number(static_cast<qlonglong>(event.conversion_us)) + ',' +
+                     QByteArray::number(event.driver_result) + '\n';
         }
         constexpr qint64 max_trace_bytes = 128 * 1024 * 1024;
         if (bytes.size() > max_trace_bytes - trace_bytes_) {
@@ -135,6 +138,9 @@ class Endurance final : public QObject {
             trigger |= event.kind == Kind::underrun || event.kind == Kind::drop ||
                        event.kind == Kind::clear || event.kind == Kind::sink_state ||
                        (event.kind == Kind::dsp && event.duration_us >= 20000) ||
+                       (event.kind == Kind::iq_read &&
+                        (event.duration_us >= 90000 ||
+                         (event.driver_us >= 0 && event.driver_result < 0))) ||
                        (event.kind == Kind::iq_enqueue && event.actual < event.frames);
         }
         trace_interval_ = {{"events", static_cast<qint64>(trace_batch_.size())},
@@ -347,7 +353,7 @@ class Endurance final : public QObject {
             audio_trace_.setFileName(directory + "/audio-trace.csv");
             constexpr char header[] =
                 "time_us,kind,iq_sequence,frames,actual,queued_before,queued_after,duration_us,"
-                "thread_cpu_us,thread_id\n";
+                "thread_cpu_us,thread_id,driver_us,conversion_us,driver_result\n";
             if (!audio_trace_.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
                 audio_trace_.write(header, sizeof(header) - 1) != sizeof(header) - 1)
                 throw std::runtime_error("Cannot create audio trace");

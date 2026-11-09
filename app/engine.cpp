@@ -378,9 +378,12 @@ void Engine::start(const std::string &id, sdr::Config requested) {
         try {
             auto actual = initial;
             std::unique_ptr<sdr::Source> source;
-            if (device_module)
-                source = std::make_unique<sdr::DeviceSource>(device_module, device_key, actual);
-            else if (module)
+            sdr::DeviceSource *device_source = nullptr;
+            if (device_module) {
+                auto device = std::make_unique<sdr::DeviceSource>(device_module, device_key, actual);
+                device_source = device.get();
+                source = std::move(device);
+            } else if (module)
                 source = std::make_unique<PluginSource>(module, actual);
             else
                 source = sdr::open_source(id, actual);
@@ -392,15 +395,28 @@ void Engine::start(const std::string &id, sdr::Config requested) {
             const auto thread_id = trace ? traceThreadId() : 0;
             while (!token.stop_requested()) {
                 auto block = std::make_shared<sdr::Block>();
+                sdr::DeviceReadTrace read_trace;
                 const auto read_began = std::chrono::steady_clock::now();
-                const bool has_data = source->read(*block);
+                const auto log_read = [&](AudioTrace::Clock::time_point end) {
+                    if (trace)
+                        trace->add({AudioTrace::Kind::iq_read, block->sequence, block->samples.size(),
+                                    0, 0, 0, 0, AudioTrace::micros(end - read_began), -1, thread_id,
+                                    read_trace.driver.driver_us, read_trace.conversion_us,
+                                    read_trace.driver.driver_result},
+                                   end);
+                };
+                bool has_data;
+                try {
+                    has_data = trace && device_source ? device_source->read(*block, &read_trace)
+                                                      : source->read(*block);
+                } catch (...) {
+                    log_read(AudioTrace::Clock::now());
+                    throw;
+                }
                 const auto read_finished = std::chrono::steady_clock::now();
                 maximum(max_source_read_ms_, milliseconds(read_finished - read_began));
                 const auto sequence = block->sequence;
-                if (trace)
-                    trace->add({AudioTrace::Kind::iq_read, sequence, block->samples.size(), 0, 0, 0,
-                                0, AudioTrace::micros(read_finished - read_began), -1, thread_id},
-                               read_finished);
+                log_read(read_finished);
                 if (!has_data)
                     break;
                 if (block->samples.empty()) {
