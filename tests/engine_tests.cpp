@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -261,17 +262,34 @@ int main(int argc, char **argv) {
             wait([&] { return engine.snapshot().plugins.empty(); }, "Plugin disabled");
         }
         config.sample_rate = 2400000;
-        engine.post([&] { engine.start("synthetic", config); });
-        wait([&] { return engine.snapshot().running && engine.snapshot().iq_samples > 50000; },
+        AudioBuffer traced(true);
+        Engine stalled_engine(traced, folder.filePath("no-device-modules"));
+        stalled_engine.post([&] { stalled_engine.start("synthetic", config); });
+        wait([&] {
+            return stalled_engine.snapshot().running && stalled_engine.snapshot().iq_samples > 50000;
+        },
              "RX active before deliberate worker stall");
-        engine.post([] { std::this_thread::sleep_for(std::chrono::milliseconds(200)); });
-        wait([&] { return engine.snapshot().error.contains("IQ queue overflow"); },
+        stalled_engine.post([] { std::this_thread::sleep_for(std::chrono::milliseconds(200)); });
+        wait([&] { return stalled_engine.snapshot().error.contains("IQ queue overflow"); },
              "Bounded IQ queue reports deliberate worker stall");
-        const auto stalled = engine.snapshot();
+        const auto stalled = stalled_engine.snapshot();
         check(!stalled.running && stalled.overflows == 1 && stalled.max_enqueue_wait_ms >= 15,
               "Overflow and queue wait metrics survive fault teardown");
         check(stalled.max_worker_gap_ms >= 150,
               "Worker pause must remain visible when overflow is detected before next block");
+        std::vector<AudioTrace::Event> events;
+        traced.trace()->take(events);
+        using Kind = AudioTrace::Kind;
+        check(std::any_of(events.begin(), events.end(), [](const auto &event) {
+                  return event.kind == Kind::iq_enqueue && event.frames == sdr::block_size &&
+                         event.actual == 0 && event.before == 8 && event.after == 8;
+              }),
+              "Fault trace reports the full IQ queue at rejection");
+        check(std::any_of(events.begin(), events.end(), [](const auto &event) {
+                  return event.kind == Kind::iq_dequeue && event.actual == sdr::block_size &&
+                         event.before == event.after + 1 && event.duration_us >= 0;
+              }),
+              "IQ dequeue traces the block age and queue depth");
         std::cout << "Engine integration tests passed\n";
         return 0;
     } catch (const std::exception &e) {

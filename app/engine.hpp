@@ -86,7 +86,11 @@ class Engine {
   private:
     AudioBuffer &audio_;
     sdr::BoundedQueue<std::function<void()>> commands_{32};
-    sdr::BoundedQueue<std::shared_ptr<const sdr::Block>> iq_{8};
+    struct PendingIq {
+        std::shared_ptr<const sdr::Block> block;
+        AudioTrace::Clock::time_point read_finished;
+    };
+    sdr::BoundedQueue<PendingIq> iq_{8};
     std::jthread worker_, acquisition_;
     std::mutex snapshot_mutex_, failure_mutex_;
     std::mutex wake_mutex_;

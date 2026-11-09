@@ -74,6 +74,28 @@ int main(int argc, char **argv) {
         cancellation.request_stop();
         check(!burst.push_for(3, std::chrono::milliseconds(500), cancellation.get_token()),
               "Stop interrupts producer wait");
+        sdr::BoundedQueue<sdr::Block> iq_burst(8);
+        std::size_t depth = 0;
+        // Eight 16K blocks can arrive before the paused consumer runs again.
+        for (std::uint64_t sequence = 0; sequence < 8; ++sequence) {
+            sdr::Block block;
+            block.sequence = sequence;
+            block.sample_index = sequence * sdr::block_size;
+            block.samples.resize(sdr::block_size, {static_cast<float>(sequence), 0});
+            check(iq_burst.push_for(std::move(block), std::chrono::milliseconds(20), {}, &depth) &&
+                      depth == sequence + 1,
+                  "IQ burst fills the expected number of slots");
+        }
+        check(!iq_burst.push_for({}, std::chrono::milliseconds(20), {}, &depth) && depth == 8,
+              "IQ overflow reports full depth without replacing a queued block");
+        for (std::uint64_t sequence = 0; sequence < 8; ++sequence) {
+            const auto block = iq_burst.pop(&depth);
+            check(block && block->sequence == sequence && depth == 7 - sequence &&
+                      block->sample_index == sequence * sdr::block_size &&
+                      block->samples.size() == sdr::block_size &&
+                      block->samples.back().real() == static_cast<float>(sequence),
+                  "IQ burst drains in sample order with original payloads");
+        }
         sdr::BoundedQueue<int> transport(8);
         std::thread producer([&] {
             for (int i = 0; i < 10000; ++i)

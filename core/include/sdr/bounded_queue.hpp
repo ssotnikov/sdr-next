@@ -23,20 +23,28 @@ template <class T> class BoundedQueue {
         queue_.push_back(std::move(value));
         return true;
     }
-    bool push_for(T value, std::chrono::milliseconds timeout, std::stop_token stop) {
+    bool push_for(T value, std::chrono::milliseconds timeout, std::stop_token stop,
+                  std::size_t *depth_after = nullptr) {
         std::unique_lock lock(mutex_);
         if (stop.stop_requested() ||
-            !space_.wait_for(lock, stop, timeout, [this] { return queue_.size() < capacity_; }))
+            !space_.wait_for(lock, stop, timeout, [this] { return queue_.size() < capacity_; })) {
+            if (depth_after)
+                *depth_after = queue_.size();
             return false;
+        }
         queue_.push_back(std::move(value));
+        if (depth_after)
+            *depth_after = queue_.size();
         return true;
     }
-    std::optional<T> pop() {
+    std::optional<T> pop(std::size_t *depth_after = nullptr) {
         std::lock_guard lock(mutex_);
         if (queue_.empty())
             return {};
         T value = std::move(queue_.front());
         queue_.pop_front();
+        if (depth_after)
+            *depth_after = queue_.size();
         space_.notify_one();
         return value;
     }

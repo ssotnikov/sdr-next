@@ -25,6 +25,14 @@
 #endif
 
 namespace {
+std::uint32_t traceThreadId() {
+#ifdef Q_OS_WIN
+    return GetCurrentThreadId();
+#else
+    return 0;
+#endif
+}
+
 std::int64_t threadCpuMicros() {
 #ifdef Q_OS_WIN
     FILETIME created{}, exited{}, kernel{}, user{};
@@ -380,6 +388,8 @@ void Engine::start(const std::string &id, sdr::Config requested) {
             announced = true;
             auto deadline = std::chrono::steady_clock::now();
             auto last_data = deadline;
+            auto *trace = audio_.trace();
+            const auto thread_id = trace ? traceThreadId() : 0;
             while (!token.stop_requested()) {
                 auto block = std::make_shared<sdr::Block>();
                 const auto read_began = std::chrono::steady_clock::now();
@@ -387,9 +397,10 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                 const auto read_finished = std::chrono::steady_clock::now();
                 maximum(max_source_read_ms_, milliseconds(read_finished - read_began));
                 const auto sequence = block->sequence;
-                if (auto *trace = audio_.trace())
+                if (trace)
                     trace->add({AudioTrace::Kind::iq_read, sequence, block->samples.size(), 0, 0, 0,
-                                0, AudioTrace::micros(read_finished - read_began)}, read_finished);
+                                0, AudioTrace::micros(read_finished - read_began), -1, thread_id},
+                               read_finished);
                 if (!has_data)
                     break;
                 if (block->samples.empty()) {
@@ -402,13 +413,16 @@ void Engine::start(const std::string &id, sdr::Config requested) {
                     ++gaps_;
                 const auto count = block->samples.size();
                 const auto enqueue_began = std::chrono::steady_clock::now();
-                const bool enqueued =
-                    iq_.push_for(std::move(block), std::chrono::milliseconds(20), token);
+                std::size_t depth = 0;
+                const bool enqueued = iq_.push_for({std::move(block), read_finished},
+                                                   std::chrono::milliseconds(20), token,
+                                                   trace ? &depth : nullptr);
                 const auto enqueue_finished = std::chrono::steady_clock::now();
                 maximum(max_enqueue_wait_ms_, milliseconds(enqueue_finished - enqueue_began));
-                if (auto *trace = audio_.trace())
+                if (trace)
                     trace->add({AudioTrace::Kind::iq_enqueue, sequence, count, enqueued ? count : 0,
-                                0, 0, 0, AudioTrace::micros(enqueue_finished - enqueue_began)},
+                                depth - static_cast<std::size_t>(enqueued), depth, 0,
+                                AudioTrace::micros(enqueue_finished - enqueue_began), -1, thread_id},
                                enqueue_finished);
                 if (!enqueued) {
                     if (token.stop_requested())
@@ -657,21 +671,29 @@ void Engine::run(std::stop_token token) {
                 }
                 if (!failure.isEmpty())
                     throw std::runtime_error(failure.toStdString());
-                if (auto block = iq_.pop()) {
+                auto *trace = audio_.trace();
+                std::size_t depth = 0;
+                if (auto pending = iq_.pop(trace ? &depth : nullptr)) {
                     worked = true;
                     const auto began = std::chrono::steady_clock::now();
                     if (last_block_time_ != std::chrono::steady_clock::time_point{})
                         current_.max_worker_gap_ms = std::max(
                             current_.max_worker_gap_ms, milliseconds(began - last_block_time_));
                     last_block_time_ = began;
-                    const auto &b = **block;
+                    const auto &b = *pending->block;
+                    const auto thread_id = trace ? traceThreadId() : 0;
+                    if (trace)
+                        trace->add({AudioTrace::Kind::iq_dequeue, b.sequence, b.samples.size(),
+                                    b.samples.size(), depth + 1, depth, 0,
+                                    AudioTrace::micros(began - pending->read_finished), -1,
+                                    thread_id},
+                                   began);
                     if (b.discontinuity) {
                         demod_.configure(config);
                         if (plugin_demod_)
                             throw std::runtime_error("Plugin processing stopped after IQ "
                                                      "discontinuity; reset requires restart");
                     }
-                    auto *trace = audio_.trace();
                     const auto cpu_began = trace ? threadCpuMicros() : -1;
                     const auto dsp_began = std::chrono::steady_clock::now();
                     demod_.process(b.samples, audio_block_);
@@ -687,7 +709,7 @@ void Engine::run(std::stop_token token) {
                                     audio_block_.size(), 0, 0, 0,
                                     AudioTrace::micros(dsp_finished - dsp_began),
                                     cpu_began >= 0 && cpu_finished >= cpu_began
-                                        ? cpu_finished - cpu_began : -1}, dsp_finished);
+                                        ? cpu_finished - cpu_began : -1, thread_id}, dsp_finished);
                     }
                     const auto push_began = std::chrono::steady_clock::now();
                     audio_.push(audio_block_, b.sequence);

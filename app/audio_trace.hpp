@@ -9,13 +9,17 @@
 class AudioTrace {
   public:
     using Clock = std::chrono::steady_clock;
-    enum class Kind { iq_read, iq_enqueue, dsp, push, drop, read, prefill, underrun, clear, record, sink_state };
+    enum class Kind {
+        iq_read, iq_enqueue, dsp, push, drop, read, prefill, underrun, clear, record, sink_state,
+        iq_dequeue
+    };
     struct Event {
         Kind kind;
         std::uint64_t block = 0;
         std::size_t frames = 0, actual = 0, before = 0, after = 0;
         std::int64_t time_us = 0, duration_us = 0;
         std::int64_t thread_cpu_us = -1;
+        std::uint32_t thread_id = 0;
     };
     static constexpr std::size_t capacity = 4096;
 
@@ -23,7 +27,7 @@ class AudioTrace {
 
     // Producers never wait for the collector or allocate.
     void add(Event event, Clock::time_point end = Clock::now()) {
-        event.time_us = micros(end - origin_);
+        event.time_us = offsetMicros(end);
         std::unique_lock lock(mutex_, std::try_to_lock);
         if (lock && pending_.size() < capacity)
             pending_.push_back(event);
@@ -39,6 +43,7 @@ class AudioTrace {
     }
 
     std::uint64_t lost() const { return lost_.load(std::memory_order_relaxed); }
+    std::int64_t offsetMicros(Clock::time_point time) const { return micros(time - origin_); }
     static std::int64_t micros(Clock::duration value) {
         return std::chrono::duration_cast<std::chrono::microseconds>(value).count();
     }
