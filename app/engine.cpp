@@ -15,8 +15,33 @@
 #include <filesystem>
 #include <future>
 #include <sdr/path.hpp>
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#elif defined(Q_OS_LINUX)
+#include <time.h>
+#endif
 
 namespace {
+std::int64_t threadCpuMicros() {
+#ifdef Q_OS_WIN
+    FILETIME created{}, exited{}, kernel{}, user{};
+    if (GetThreadTimes(GetCurrentThread(), &created, &exited, &kernel, &user)) {
+        const auto ticks = [](FILETIME time) {
+            return (static_cast<std::uint64_t>(time.dwHighDateTime) << 32) | time.dwLowDateTime;
+        };
+        return static_cast<std::int64_t>((ticks(kernel) + ticks(user)) / 10);
+    }
+#elif defined(Q_OS_LINUX)
+    timespec time{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time) == 0)
+        return static_cast<std::int64_t>(time.tv_sec) * 1000000 + time.tv_nsec / 1000;
+#endif
+    return -1;
+}
+
 double milliseconds(std::chrono::steady_clock::duration duration) {
     return std::chrono::duration<double, std::milli>(duration).count();
 }
@@ -646,18 +671,25 @@ void Engine::run(std::stop_token token) {
                             throw std::runtime_error("Plugin processing stopped after IQ "
                                                      "discontinuity; reset requires restart");
                     }
+                    auto *trace = audio_.trace();
+                    const auto cpu_began = trace ? threadCpuMicros() : -1;
                     const auto dsp_began = std::chrono::steady_clock::now();
                     demod_.process(b.samples, audio_block_);
                     if (plugin_demod_)
                         plugin_demod_->process(b.samples, audio_block_);
+                    const auto dsp_finished = std::chrono::steady_clock::now();
                     current_.max_dsp_ms =
                         std::max(current_.max_dsp_ms,
-                                 milliseconds(std::chrono::steady_clock::now() - dsp_began));
-                    const auto push_began = std::chrono::steady_clock::now();
-                    if (auto *trace = audio_.trace())
+                                 milliseconds(dsp_finished - dsp_began));
+                    if (trace) {
+                        const auto cpu_finished = threadCpuMicros();
                         trace->add({AudioTrace::Kind::dsp, b.sequence, b.samples.size(),
                                     audio_block_.size(), 0, 0, 0,
-                                    AudioTrace::micros(push_began - dsp_began)}, push_began);
+                                    AudioTrace::micros(dsp_finished - dsp_began),
+                                    cpu_began >= 0 && cpu_finished >= cpu_began
+                                        ? cpu_finished - cpu_began : -1}, dsp_finished);
+                    }
+                    const auto push_began = std::chrono::steady_clock::now();
                     audio_.push(audio_block_, b.sequence);
                     current_.max_audio_push_ms =
                         std::max(current_.max_audio_push_ms,
@@ -678,7 +710,7 @@ void Engine::run(std::stop_token token) {
                             event("record.error", current_.error);
                         }
                         const auto record_finished = std::chrono::steady_clock::now();
-                        if (auto *trace = audio_.trace())
+                        if (trace)
                             trace->add({AudioTrace::Kind::record, b.sequence, audio_block_.size(),
                                         0, 0, 0, 0, AudioTrace::micros(record_finished - record_began)},
                                        record_finished);

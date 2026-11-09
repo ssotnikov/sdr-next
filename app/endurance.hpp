@@ -100,7 +100,8 @@ class Endurance final : public QObject {
                      QByteArray::number(static_cast<qulonglong>(event.actual)) + ',' +
                      QByteArray::number(static_cast<qulonglong>(event.before)) + ',' +
                      QByteArray::number(static_cast<qulonglong>(event.after)) + ',' +
-                     QByteArray::number(static_cast<qlonglong>(event.duration_us)) + '\n';
+                     QByteArray::number(static_cast<qlonglong>(event.duration_us)) + ',' +
+                     QByteArray::number(static_cast<qlonglong>(event.thread_cpu_us)) + '\n';
         }
         constexpr qint64 max_trace_bytes = 128 * 1024 * 1024;
         if (bytes.size() > max_trace_bytes - trace_bytes_) {
@@ -124,7 +125,9 @@ class Endurance final : public QObject {
                 minimum = minimum < 0 ? after : std::min(minimum, after);
             }
             trigger |= event.kind == Kind::underrun || event.kind == Kind::drop ||
-                       event.kind == Kind::clear || event.kind == Kind::sink_state;
+                       event.kind == Kind::clear || event.kind == Kind::sink_state ||
+                       (event.kind == Kind::dsp && event.duration_us >= 20000) ||
+                       (event.kind == Kind::iq_enqueue && event.actual < event.frames);
         }
         trace_interval_ = {{"events", static_cast<qint64>(trace_batch_.size())},
                            {"lost_total", static_cast<qint64>(trace->lost())},
@@ -319,7 +322,7 @@ class Endurance final : public QObject {
         if (receiver_.audioTrace()) {
             audio_trace_.setFileName(directory + "/audio-trace.csv");
             constexpr char header[] =
-                "time_us,kind,iq_sequence,frames,actual,queued_before,queued_after,duration_us\n";
+                "time_us,kind,iq_sequence,frames,actual,queued_before,queued_after,duration_us,thread_cpu_us\n";
             if (!audio_trace_.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
                 audio_trace_.write(header, sizeof(header) - 1) != sizeof(header) - 1)
                 throw std::runtime_error("Cannot create audio trace");
