@@ -93,8 +93,13 @@ void AudioBuffer::push(std::span<const float> samples, std::uint64_t block) {
         trace_->add({AudioTrace::Kind::push, block, samples.size(), samples.size(),
                      size_ - samples.size(), size_}, now);
 }
-qint64 AudioBuffer::read(char *destination, qint64 bytes) {
+qint64 AudioBuffer::read(char *destination, qint64 bytes,
+                         std::optional<std::uint64_t> generation) {
     std::lock_guard lock(mutex_);
+    if (generation && *generation != generation_) {
+        std::memset(destination, 0, static_cast<std::size_t>(bytes));
+        return bytes;
+    }
     const auto now = std::chrono::steady_clock::now();
     if (last_read_ != std::chrono::steady_clock::time_point{})
         metrics_.max_read_gap_ms =
@@ -163,8 +168,19 @@ qint64 AudioBuffer::read(char *destination, qint64 bytes) {
     }
     return bytes;
 }
-void AudioBuffer::clear(bool reset_metrics) {
+std::uint64_t AudioBuffer::clear(bool reset_metrics, bool advance_generation) {
     std::lock_guard lock(mutex_);
+    if (advance_generation)
+        ++generation_;
+    clear_locked(reset_metrics);
+    return generation_;
+}
+void AudioBuffer::discard(std::uint64_t generation) {
+    std::lock_guard lock(mutex_);
+    if (generation == generation_)
+        clear_locked(false);
+}
+void AudioBuffer::clear_locked(bool reset_metrics) {
     if (trace_)
         trace_->add({AudioTrace::Kind::clear, 0, 0, 0, size_, 0});
     if (!reset_metrics)
@@ -495,7 +511,7 @@ void Engine::start(const std::string &id, sdr::Config requested) {
         iq_.clear();
         throw;
     }
-    audio_.clear();
+    current_.audio_generation = audio_.clear(true, true);
     current_.iq_samples = 0;
     current_.gaps = 0;
     current_.overflows = 0;
@@ -519,7 +535,7 @@ void Engine::stop() {
         acquisition_.join();
     iq_.clear();
     plugin_demod_.reset();
-    audio_.clear(false);
+    current_.audio_generation = audio_.clear(false, true);
     stop_record();
     current_.running = false;
     current_.queue_depth = 0;

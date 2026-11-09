@@ -25,6 +25,22 @@ template <class F> void wait(F condition, const char *message) {
     throw std::runtime_error(message);
 }
 void check_audio_diagnostics() {
+    AudioBuffer session(false, false);
+    const auto previous = session.clear(true, true);
+    session.push(std::vector<float>(4800, 0.25f));
+    session.clear(false, true);
+    const auto next = session.clear(true, true);
+    session.push(std::vector<float>(4800, -0.25f));
+    session.discard(previous);
+    std::vector<float> frames(4800);
+    session.read(reinterpret_cast<char *>(frames.data()), frames.size() * sizeof(float), previous);
+    check(frames.front() == 0 && frames.back() == 0 && session.metrics().queued == frames.size() &&
+              session.metrics().requested == 0 && session.underruns() == 0,
+          "A retired audio device cannot read or discard new-session audio");
+    session.read(reinterpret_cast<char *>(frames.data()), frames.size() * sizeof(float), next);
+    check(frames.front() == -0.25f && frames.back() == -0.25f,
+          "The active audio device receives only its own session's samples");
+
     AudioBuffer traced(true, false);
     std::vector<float> output(4801);
     const std::vector<float> block(4800, 0.25f);

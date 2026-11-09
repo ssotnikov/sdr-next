@@ -24,6 +24,8 @@ class Setup : public QObject {
         engine->rootContext()->setContextProperty("receiver", controller_.get());
         engine->rootContext()->setContextProperty(
             "testHackrf", qEnvironmentVariableIntValue("SDR_TEST_HACKRF") == 1);
+        engine->rootContext()->setContextProperty(
+            "testAudioOutput", qEnvironmentVariableIntValue("SDR_TEST_AUDIO_OUTPUT") == 1);
     }
 };
 QUICK_TEST_MAIN_WITH_SETUP(sdr_ui, Setup)

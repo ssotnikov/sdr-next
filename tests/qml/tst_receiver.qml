@@ -198,6 +198,40 @@ TestCase {
         mouseClick(rx)
         tryVerify(function() { return !receiver.status.running }, 10000)
     }
+    function test_synthetic_audio_continuity() {
+        if (!testAudioOutput) skip("Physical audio output requires SDR_TEST_AUDIO_OUTPUT=1")
+        receiver.setAudio(0, 0.02)
+        receiver.start(0, {centerMHz: 100, rate: 2400000, offsetKHz: 0, mode: "WFM", squelch: -120})
+        tryVerify(function() { return receiver.status.audioFramesDelivered > 0 }, 10000)
+        wait(3500)
+        console.info("Synthetic audio: " + JSON.stringify(receiver.status))
+        compare(receiver.status.error, "")
+        compare(receiver.status.overflows, 0)
+        compare(receiver.status.audioDrops, 0)
+        compare(receiver.status.audioUnderruns, 0)
+    }
+    function test_audio_reconfigure_and_output_recovery() {
+        if (!testAudioOutput) skip("Physical audio output requires SDR_TEST_AUDIO_OUTPUT=1")
+        receiver.setAudio(0, 0.02)
+        const config = {centerMHz: 100, rate: 2400000, offsetKHz: 0, mode: "WFM", squelch: -120}
+        receiver.start(0, config)
+        tryVerify(function() { return receiver.status.audioSinkElapsedUs > 1000000 }, 10000)
+        config.rate = 1200000
+        receiver.start(0, config)
+        tryVerify(function() { return receiver.status.running && receiver.status.rate === 1200000 }, 10000)
+        verify(receiver.status.audioSinkElapsedUs < 1000000, "Reconfigure must discard the old audio sink")
+        tryVerify(function() { return receiver.status.audioFramesDelivered > 0 }, 10000)
+        receiver.setAudio(receiver.audioOutputs.length, 0.02)
+        tryCompare(receiver, "audioOutputIndex", -1)
+        tryVerify(function() { return receiver.status.error.indexOf("unavailable") >= 0 }, 10000)
+        compare(receiver.status.running, true)
+        compare(receiver.status.audioSinkState, -1)
+        receiver.setAudio(0, 0.02)
+        tryVerify(function() { return receiver.status.error === "" && receiver.status.audioSinkState === 0 }, 10000)
+        receiver.stop()
+        tryVerify(function() { return !receiver.status.running && receiver.status.audioSinkState === -1 }, 10000)
+        compare(receiver.status.audioQueuedFrames, 0)
+    }
     function test_hackrf_rx() {
         if (!testHackrf) skip("Physical HackRF test requires SDR_TEST_HACKRF=1")
         let index = -1

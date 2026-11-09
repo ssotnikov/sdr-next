@@ -1,7 +1,9 @@
 #pragma once
 #include "engine.hpp"
+#include <QAudioDevice>
 #include <QAudioSink>
 #include <QIODevice>
+#include <QMediaDevices>
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
@@ -10,14 +12,18 @@
 
 class AudioDevice final : public QIODevice {
     AudioBuffer &buffer_;
+    const std::uint64_t generation_;
 
   public:
-    explicit AudioDevice(AudioBuffer &buffer) : buffer_(buffer) {
+    AudioDevice(AudioBuffer &buffer, std::uint64_t generation)
+        : buffer_(buffer), generation_(generation) {
         open(QIODevice::ReadOnly | QIODevice::Unbuffered);
     }
     bool isSequential() const override { return true; }
     qint64 bytesAvailable() const override { return 48000 + QIODevice::bytesAvailable(); }
-    qint64 readData(char *data, qint64 count) override { return buffer_.read(data, count); }
+    qint64 readData(char *data, qint64 count) override {
+        return buffer_.read(data, count, generation_);
+    }
     qint64 writeData(const char *, qint64) override { return -1; }
 };
 class Controller final : public QObject {
@@ -25,7 +31,8 @@ class Controller final : public QObject {
     Q_PROPERTY(QVariantMap status READ status NOTIFY changed)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(QStringList demods READ demods NOTIFY devicesChanged)
-    Q_PROPERTY(QStringList audioOutputs READ audioOutputs CONSTANT)
+    Q_PROPERTY(QStringList audioOutputs READ audioOutputs NOTIFY audioOutputsChanged)
+    Q_PROPERTY(int audioOutputIndex READ audioOutputIndex NOTIFY audioOutputsChanged)
     Q_PROPERTY(QVariantMap settings READ settings CONSTANT)
   public:
     explicit Controller(QObject *parent = nullptr, bool trace_audio = false,
@@ -35,6 +42,7 @@ class Controller final : public QObject {
     QVariantList devices() const { return devices_; }
     QStringList demods() const { return demods_; }
     QStringList audioOutputs() const;
+    int audioOutputIndex() const;
     QVariantMap settings() const { return settings_; }
     Q_INVOKABLE void scan();
     Q_INVOKABLE void start(int, const QVariantMap &);
@@ -44,6 +52,7 @@ class Controller final : public QObject {
     Q_INVOKABLE void loadPlugin(const QString &);
     Q_INVOKABLE void unloadPlugins();
     Q_INVOKABLE void setAudio(int, double);
+    Q_INVOKABLE void setAudioVolume(double);
     Q_INVOKABLE void saveSettings(const QVariantMap &);
     Q_INVOKABLE void exportDiagnostics(const QString &);
     void reportTestFailure(const QString &message) { ui_error_ = message; }
@@ -51,12 +60,17 @@ class Controller final : public QObject {
   signals:
     void changed();
     void devicesChanged();
+    void audioOutputsChanged();
     void spectrumReady(const QList<float> &);
 
   private:
     AudioBuffer audio_;
     Engine engine_;
-    AudioDevice device_;
+    QMediaDevices media_devices_;
+    QList<QAudioDevice> audio_outputs_;
+    std::optional<QByteArray> audio_output_id_{QByteArray{}};
+    QByteArray sink_output_id_;
+    std::unique_ptr<AudioDevice> device_;
     std::unique_ptr<QAudioSink> sink_;
     QTimer poll_;
     QVariantMap status_, settings_;
@@ -64,12 +78,13 @@ class Controller final : public QObject {
     QStringList demods_;
     Snapshot last_;
     QString settings_path_, ui_error_, audio_error_;
-    int audio_index_ = 0;
     double volume_ = 0.5;
-    bool audio_running_ = false;
     bool settings_invalid_ = false;
     std::uint64_t backend_underruns_ = 0;
     void poll();
-    void startAudio();
+    QAudioDevice selectedAudioOutput() const;
+    void refreshAudioOutputs();
+    void startAudio(std::uint64_t generation, bool discard);
+    void resetAudio();
     void dispatch(std::function<void()>);
 };

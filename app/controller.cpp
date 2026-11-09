@@ -18,7 +18,7 @@ QString localPath(const QString &value) {
 }
 } // namespace
 Controller::Controller(QObject *parent, bool trace_audio, bool adaptive_audio)
-    : QObject(parent), audio_(trace_audio, adaptive_audio), engine_(audio_), device_(audio_) {
+    : QObject(parent), audio_(trace_audio, adaptive_audio), engine_(audio_) {
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     settings_path_ = directory + "/settings.json";
     if (QFile::exists(QCoreApplication::applicationDirPath() + "/portable.txt"))
@@ -38,19 +38,44 @@ Controller::Controller(QObject *parent, bool trace_audio, bool adaptive_audio)
         }
     }
     settings_invalid_ = !ui_error_.isEmpty();
+    audio_outputs_ = QMediaDevices::audioOutputs();
+    connect(&media_devices_, &QMediaDevices::audioOutputsChanged, this,
+            &Controller::refreshAudioOutputs);
     connect(&poll_, &QTimer::timeout, this, &Controller::poll);
     poll_.start(33);
     poll();
 }
 Controller::~Controller() {
-    if (sink_)
-        sink_->stop();
+    resetAudio();
 }
 QStringList Controller::audioOutputs() const {
     QStringList result{"System default"};
-    for (const auto &d : QMediaDevices::audioOutputs())
+    for (const auto &d : audio_outputs_)
         result.push_back(d.description());
     return result;
+}
+int Controller::audioOutputIndex() const {
+    if (!audio_output_id_)
+        return -1;
+    if (audio_output_id_->isEmpty())
+        return 0;
+    for (qsizetype i = 0; i < audio_outputs_.size(); ++i)
+        if (audio_outputs_[i].id() == *audio_output_id_)
+            return static_cast<int>(i + 1);
+    return -1;
+}
+QAudioDevice Controller::selectedAudioOutput() const {
+    const int index = audioOutputIndex();
+    if (index < 0)
+        return {};
+    return index == 0 ? QMediaDevices::defaultAudioOutput() : audio_outputs_[index - 1];
+}
+void Controller::refreshAudioOutputs() {
+    audio_outputs_ = QMediaDevices::audioOutputs();
+    emit audioOutputsChanged();
+    if (last_.running && (!sink_ || sink_->state() == QtAudio::StoppedState ||
+                          selectedAudioOutput().id() != sink_output_id_))
+        startAudio(last_.audio_generation, true);
 }
 void Controller::dispatch(std::function<void()> command) {
     if (!engine_.post(std::move(command))) {
@@ -110,47 +135,68 @@ void Controller::loadPlugin(const QString &manifest) {
 void Controller::unloadPlugins() {
     dispatch([this] { engine_.unload_plugins(); });
 }
-void Controller::startAudio() {
+void Controller::resetAudio() {
     if (sink_) {
-        sink_->stop();
+        sink_->reset();
         sink_.reset();
     }
-    audio_.clear(false);
-    const auto outputs = QMediaDevices::audioOutputs();
-    const auto output = audio_index_ > 0 && audio_index_ <= outputs.size()
-                            ? outputs[audio_index_ - 1]
-                            : QMediaDevices::defaultAudioOutput();
+    device_.reset();
+    sink_output_id_.clear();
+}
+void Controller::startAudio(std::uint64_t generation, bool discard) {
+    resetAudio();
+    if (discard)
+        audio_.discard(generation);
+    audio_error_.clear();
+    const auto output = selectedAudioOutput();
+    if (output.isNull()) {
+        audio_error_ = "Audio output is unavailable; choose another device";
+        return;
+    }
     QAudioFormat format;
     format.setSampleRate(sdr::audio_rate);
     format.setChannelCount(1);
     format.setSampleFormat(QAudioFormat::Float);
-    if (output.isNull() || !output.isFormatSupported(format)) {
+    if (!output.isFormatSupported(format)) {
         audio_error_ = "Audio output does not support mono float32 / 48 kHz; choose another device";
         return;
     }
+    device_ = std::make_unique<AudioDevice>(audio_, generation);
+    sink_output_id_ = output.id();
     sink_ = std::make_unique<QAudioSink>(output, format);
     sink_->setBufferSize(2400 * sizeof(float));
     sink_->setVolume(static_cast<float>(volume_));
-    connect(sink_.get(), &QAudioSink::stateChanged, this, [this](QtAudio::State state) {
-        if (auto *trace = audio_.trace(); trace && sink_)
+    auto *sink = sink_.get();
+    connect(sink, &QAudioSink::stateChanged, sink, [this, sink](QtAudio::State state) {
+        if (auto *trace = audio_.trace())
             trace->add({AudioTrace::Kind::sink_state, 0, static_cast<std::size_t>(state),
-                        static_cast<std::size_t>(sink_->error())});
-        if (state == QtAudio::IdleState && sink_ && sink_->error() == QtAudio::UnderrunError)
+                        static_cast<std::size_t>(sink->error())});
+        if (state == QtAudio::IdleState && sink->error() == QtAudio::UnderrunError)
             ++backend_underruns_;
-        if (state == QtAudio::StoppedState && sink_ && sink_->error() != QtAudio::NoError) {
+        if (state == QtAudio::StoppedState && sink->error() != QtAudio::NoError) {
             audio_error_ = "Audio output was lost or could not be opened";
             emit changed();
         }
     });
-    sink_->start(&device_);
+    sink_->start(device_.get());
 }
 void Controller::setAudio(int index, double volume) {
-    const bool changed = index != audio_index_;
-    audio_index_ = index;
+    std::optional<QByteArray> id;
+    if (index == 0)
+        id = QByteArray{};
+    else if (index > 0 && index <= audio_outputs_.size())
+        id = audio_outputs_[index - 1].id();
+    const bool changed = id != audio_output_id_;
+    audio_output_id_ = std::move(id);
+    setAudioVolume(volume);
+    if (changed)
+        emit audioOutputsChanged();
+    if (last_.running && (changed || !sink_ || sink_->state() == QtAudio::StoppedState))
+        startAudio(last_.audio_generation, true);
+}
+void Controller::setAudioVolume(double volume) {
     volume_ = std::clamp(volume, 0.0, 1.0);
-    if (last_.running && changed)
-        startAudio();
-    else if (sink_)
+    if (sink_)
         sink_->setVolume(static_cast<float>(volume_));
 }
 void Controller::saveSettings(const QVariantMap &values) {
@@ -201,16 +247,12 @@ void Controller::poll() {
         demods_ = next.demods;
         emit devicesChanged();
     }
-    if (next.running && !audio_running_) {
+    if (next.running && (!last_.running || next.audio_generation != last_.audio_generation)) {
         backend_underruns_ = 0;
-        startAudio();
+        startAudio(next.audio_generation, false);
     }
-    if (!next.running && audio_running_ && sink_) {
-        sink_->stop();
-        sink_.reset();
-        audio_.clear(false);
-    }
-    audio_running_ = next.running;
+    if (!next.running && last_.running)
+        resetAudio();
     QString error = !ui_error_.isEmpty()      ? ui_error_
                     : !audio_error_.isEmpty() ? audio_error_
                                               : next.error;

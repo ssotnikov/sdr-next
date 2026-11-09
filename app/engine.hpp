@@ -30,8 +30,9 @@ class AudioBuffer {
     };
     Metrics metrics();
     void push(std::span<const float>, std::uint64_t block = 0);
-    qint64 read(char *, qint64);
-    void clear(bool reset_metrics = true);
+    qint64 read(char *, qint64, std::optional<std::uint64_t> generation = {});
+    std::uint64_t clear(bool reset_metrics = true, bool advance_generation = false);
+    void discard(std::uint64_t generation);
     std::uint64_t underruns() const { return underruns_; }
     std::uint64_t drops() const { return drops_; }
 
@@ -41,12 +42,14 @@ class AudioBuffer {
     std::mutex mutex_;
     std::vector<float> data_ = std::vector<float>(12000);
     std::size_t read_ = 0, size_ = 0;
+    std::uint64_t generation_ = 0;
     bool started_ = false;
     std::atomic<std::uint64_t> underruns_{0}, drops_{0};
     Metrics metrics_;
     double filtered_reserve_ = 3600, phase_ = 0;
     std::optional<float> previous_sample_;
     std::chrono::steady_clock::time_point last_read_{}, last_push_{};
+    void clear_locked(bool reset_metrics);
 };
 struct Snapshot {
     QString state = "Idle", error;
@@ -56,6 +59,7 @@ struct Snapshot {
     QStringList device_modules, device_module_errors;
     std::vector<float> spectrum;
     std::uint64_t frame = 0, iq_samples = 0, gaps = 0, overflows = 0;
+    std::uint64_t audio_generation = 0;
     double sample_rate = 2400000, center_hz = 100000000, power_db = -120, processing_ms = 0;
     double gain = 0, ppm = 0;
     bool bias_t = false;

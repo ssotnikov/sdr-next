@@ -382,9 +382,9 @@ ApplicationWindow {
                     ColumnLayout {
                         spacing: brand.spacing["space-3"]
                         Label { text: tr("Аудиовыход", "Audio output"); font.family: brand.sansSemibold }
-                        BrandCombo { id: audioOutput; model: receiver.audioOutputs; Layout.fillWidth: true; onActivated: receiver.setAudio(currentIndex, volume.value); Accessible.name: tr("Аудиоустройство", "Audio device") }
+                        BrandCombo { id: audioOutput; model: receiver.audioOutputs; currentIndex: receiver.audioOutputIndex; Layout.fillWidth: true; onActivated: receiver.setAudio(currentIndex, volume.value); Accessible.name: tr("Аудиоустройство", "Audio device") }
                         Label { text: tr("Громкость", "Volume"); color: muted }
-                        BrandSlider { id: volume; from: 0; to: 1; value: 0.5; Layout.fillWidth: true; onMoved: receiver.setAudio(audioOutput.currentIndex,value); Accessible.name: tr("Громкость", "Volume") }
+                        BrandSlider { id: volume; from: 0; to: 1; value: 0.5; Layout.fillWidth: true; onMoved: receiver.setAudioVolume(value); Accessible.name: tr("Громкость", "Volume") }
                         Label { text: tr("Порог шумоподавителя", "Squelch threshold") + "  " + squelch.value.toFixed(0) + " dBFS"; wrapMode: Text.WordWrap; Layout.fillWidth: true; color: muted }
                         BrandSlider { id: squelch; from: -120; to: 0; value: receiver.settings.squelch === undefined ? -100 : Number(receiver.settings.squelch); Layout.fillWidth: true; Accessible.name: "Squelch" }
                         Label { text: tr("Изменение режима, полосы источника и порога применяется кнопкой «Применить».", "Use Apply to change the mode, source rate and threshold."); wrapMode: Text.WordWrap; Layout.fillWidth: true; color: muted }
