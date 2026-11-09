@@ -173,6 +173,12 @@ ApplicationWindow {
         enabled: !window.enduranceActive
         onTriggered: window.panelRight = !window.panelRight
     }
+    Action {
+        id: reportBugAction
+        text: "Report a bug"
+        enabled: !window.enduranceActive
+        onTriggered: Qt.openUrlExternally("https://github.com/ssotnikov/sdr-next/issues/new")
+    }
     component AppMenu: Menu {
         implicitWidth: 248
         popupType: Popup.Item
@@ -230,6 +236,7 @@ ApplicationWindow {
         }
         AppMenu {
             title: tr("Справка", "Help")
+            AppMenuItem { action: reportBugAction }
             AppMenuItem { text: tr("О SDR Next…", "About SDR Next…"); onTriggered: aboutDialog.open() }
         }
     }
@@ -488,6 +495,11 @@ ApplicationWindow {
                 Label { font.family: brand.mono; font.pixelSize: brand.text.readout.size; text: Number(receiver.status.processingMs || 0).toFixed(2) + " ms/block"; color: muted; Layout.leftMargin: 14 }
                 Item { Layout.fillWidth: true }
                 Label { font.family: brand.mono; font.pixelSize: brand.text.readout.size; text: receiver.status.recording ? "● " + tr("Запись", "Recording") : tr("Локально · без телеметрии", "Local · no telemetry"); color: receiver.status.recording ? brand.colors.rec : muted }
+                BrandButton {
+                    action: reportBugAction
+                    Layout.leftMargin: brand.spacing["space-2"]
+                    font.pixelSize: brand.text.readout.size
+                }
             }
         }
     }
