@@ -421,7 +421,6 @@ ApplicationWindow {
                 spacing: brand.spacing["space-2"]
                 RowLayout {
                     Layout.fillWidth: true
-                    Label { text: tr("Спектр и waterfall", "Spectrum and waterfall"); color: ink; font.pixelSize: brand.text.heading.size; font.family: brand.sansSemibold }
                     Item { Layout.fillWidth: true }
                     Label { text: Number(receiver.status.powerDb || -120).toFixed(1) + " dBFS"; color: accentInk; font.family: brand.mono; font.pixelSize: brand.text.readout.size }
                     BrandButton { text: "1:1"; palette.buttonText: ink; onClicked: { spectrum.span = 1; spectrum.position = 0.5 } }
