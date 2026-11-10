@@ -145,9 +145,9 @@ class Endurance final : public QObject {
         }
         trace_interval_ = {{"events", static_cast<qint64>(trace_batch_.size())},
                            {"lost_total", static_cast<qint64>(trace->lost())},
-                           {"min_after_read_frames", minimum},
+                           {"min_after_read_frames", static_cast<qint64>(minimum)},
                            {"max_iq_depth_blocks", static_cast<qint64>(max_iq_depth)},
-                           {"max_iq_age_us", max_iq_age}};
+                           {"max_iq_age_us", static_cast<qint64>(max_iq_age)}};
         if (trigger || trace_followup_ || (!trace_started_ && !trace_batch_.empty())) {
             if (!writeTrace(trace_previous_) || !writeTrace(trace_batch_))
                 return false;
