@@ -131,6 +131,8 @@
 
   Модуль HackRF собран. После ручной загрузки `vhci_hcd` повторное подключение через USB/IP завершилось ошибкой `Device in error state`. HackRF исчез из списка активных USB-устройств Windows и не появился в Ubuntu. Аппаратный RX через WSL ждёт восстановления USB-подключения. Журналы в `build/wsl-ubuntu-2204-hardware`.
 
+  После переподключения кабеля Windows снова обнаружила HackRF One с прошивкой 2024.02.1. Повторная передача через usbipd-win 4.3.0 воспроизвела `Device in error state`. Журнал Windows `usbipd-win`, событие 3, зафиксировал `FileNotFoundException` в `GetVBoxDevice` при захвате устройства. Приём в Ubuntu не начался. Для прогона в Windows после этого отказа требуется восстановить обнаружение HackRF.
+
 ## Workflow follow-up
 
 ### Отложенные аппаратные испытания — после MVP
