@@ -59,7 +59,7 @@ build/desktop/bin/sdr_app --smoke-test
 
 ### Портативный пакет Linux
 
-Используйте Qt 6.10.0 из закреплённых исходников, собранный на Ubuntu 22.04. Для установки Qt runtime и QML нужен `patchelf` в PATH. Укажите каталог Qt SDK и, для сборки аппаратных модулей, префикс SDK SoapySDR. Выберите новую папку для установки.
+Используйте Qt 6.10.0 из закреплённых исходников, собранный на Ubuntu 22.04 с платформенными плагинами XCB и Wayland. Для установки Qt runtime и QML нужен `patchelf` в PATH. Укажите каталог Qt SDK и, для сборки аппаратных модулей, префикс SDK SoapySDR. Выберите новую папку для установки.
 
 ```sh
 cmake -S . -B build/linux-portable -G Ninja -DCMAKE_BUILD_TYPE=Release \

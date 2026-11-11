@@ -23,10 +23,22 @@ if(MSVC)
 endif()
 install(TARGETS sdr_app RUNTIME DESTINATION bin)
 if(SDR_INSTALL_LINUX_PORTABLE)
-  qt_generate_deploy_qml_app_script(
+  if(NOT TARGET Qt6::QXcbIntegrationPlugin OR NOT TARGET Qt6::QWaylandIntegrationPlugin)
+    message(FATAL_ERROR "The portable Linux package requires Qt XCB and Wayland platform plugins")
+  endif()
+  # Qt's default deployment can omit Wayland even when it is installed in the SDK.
+  qt6_generate_deploy_script(
     TARGET sdr_app
     OUTPUT_SCRIPT sdr_deploy_script
-    NO_TRANSLATIONS)
+    CONTENT [[
+qt_deploy_qml_imports(TARGET sdr_app PLUGINS_FOUND qml_plugins)
+qt_deploy_runtime_dependencies(
+  EXECUTABLE "$<TARGET_FILE:sdr_app>"
+  ADDITIONAL_MODULES ${qml_plugins}
+  INCLUDE_PLUGINS qxcb qwayland
+  GENERATE_QT_CONF
+  NO_TRANSLATIONS)
+]])
   install(SCRIPT "${sdr_deploy_script}")
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/portable.txt" "")
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/portable.txt" DESTINATION bin)
