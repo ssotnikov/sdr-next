@@ -143,3 +143,11 @@ Runtime: SoapySDR 0.8.1 (Radioconda py312hd5eb7cc_5), SoapyHackRF 0.3.4, libhack
 ## Дополнение: G0 / получение зависимостей
 
 Pins, bootstrap и локальное исправление Linux packaging SoapySDR выполнены по ADR-023. [Протокол](DEPENDENCY_ACQUISITION_VERIFICATION.md): SDK producer, независимый CMake consumer и headless SDR Next проверены на Windows/MSVC 2026 и Ubuntu 22.04/GCC 11. MSVC 2022 сейчас не обнаружен; задача 1.4 сохраняет открытый статус до проверки согласованной среды. Это не новая GUI, аппаратная или G6 приёмка; общий прогресс остаётся 27/54.
+
+## Дополнение: Windows preview и проверка зависимостей 11 ноября
+
+Пакет `dist/sdr-next-0.1-preview-20261111-win64` собран с MSVC 2026 и Qt 6.10.0. CTest прошёл 8/8, повторная сборка и CTest в Ubuntu WSL с диагностическим SDK прошли 7/7. Windows-пакет обработал synthetic IQ при очищенном PATH. Отдельный запуск из пакета с системным PATH и внешним SoapySDR проверил HackRF, активный аудиовыход и запись WAV. Тесты загрузили Source, Demodulator и Device Provider непосредственно из папки примеров пакета. [Аппаратный прогон и реакция GUI](RX_ENDURANCE_PROTOCOL.md#диагностика-спектра-11-ноября)
+
+Проверены размеры и SHA-256 всех 1 433 файлов в манифесте. В 99 PE-файлах прочитаны обычные и отложенные импорты. На эталонной Windows 11 импортируемые DLL обнаружены в пакете, пространстве Windows API Set или System32. Пакет не содержит бинарников FFmpeg. В приложенных Qt SPDX по имени файла найдены 86 PE-файлов с LGPL-вариантом. Для остальных шести сторонних бинарников карта `windeployqt` указала источники. `d3dcompiler_47.dll`, `dxcompiler.dll` и `dxil.dll` взяты из Windows SDK Redist, `vc_redist.x64.exe` из Visual Studio Redist, `opengl32sw.dll` из Qt SDK, `icuuc.dll` из System32. Последнюю DLL импортирует Qt6Core. Для закрытия 7.7 нужно проверить условия распространения и полноту notices. Инвентаризация PE не учитывает все динамические загрузки по имени. Локальные отчёты находятся в `build/endurance/package-20261111-imports.json` и `build/endurance/package-20261111-source-map.txt`. [Документация windeployqt](https://doc.qt.io/qt-6.10/windows-deployment.html)
+
+Для сборки Qt из закреплённых исходников на Ubuntu 22.04 настроены X11/XCB и PulseAudio, FFmpeg отключён. Чистые машины, Linux tar.gz и окончательная проверка лицензий остаются открытыми по задачам 7.5–7.7.

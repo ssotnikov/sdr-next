@@ -12,8 +12,10 @@
 #include <QThread>
 #include <QTimer>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <memory>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -28,6 +30,11 @@
 
 // Opt-in measurement driver. The normal receiver path is unchanged.
 class Endurance final : public QObject {
+    struct SpectrumCounters {
+        std::atomic<quint64> published{0}, synced_sequence{0}, presented_sequence{0};
+        std::atomic<quint64> synchronized{0}, presented{0}, swaps{0};
+    };
+
     Controller &receiver_;
     QString directory_, prefix_, failure_;
     QFile metrics_;
@@ -43,7 +50,8 @@ class Endurance final : public QObject {
     std::vector<double> queue_delays_;
     double seconds_, cpu_start_ = 0, elapsed_ = 0, cpu_average_ = 0;
     double min_fps_ = 1e9, max_ram_ = 0;
-    quint64 published_ = 0, presented_ = 0, last_presented_ = 0, shown_ = 0;
+    const std::shared_ptr<SpectrumCounters> spectrum_ = std::make_shared<SpectrumCounters>();
+    quint64 shown_ = 0;
     bool requested_ = false, record_requested_ = false, stopping_ = false, complete_ = false;
     bool finished_ = false, ac_lost_ = false;
     QVariantMap last_status_;
@@ -287,7 +295,7 @@ class Endurance final : public QObject {
                 cpu_start_ = cpu();
                 clock_.start();
                 interval_.restart();
-                shown_ = presented_;
+                shown_ = spectrum_->presented.load(std::memory_order_relaxed);
             } else if (interval_.elapsed() > 15000) {
                 failure_ = "Device, audio or recording did not start within 15 seconds";
                 stop(false);
@@ -297,8 +305,9 @@ class Endurance final : public QObject {
         elapsed_ = clock_.nsecsElapsed() / 1e9;
         const auto period = interval_.nsecsElapsed() / 1e9;
         interval_.restart();
-        const auto fps = static_cast<double>(presented_ - shown_) / period;
-        shown_ = presented_;
+        const auto presented = spectrum_->presented.load(std::memory_order_relaxed);
+        const auto fps = static_cast<double>(presented - shown_) / period;
+        shown_ = presented;
         min_fps_ = std::min(min_fps_, fps);
         auto row = memory();
         ac_lost_ |= row["ac_line_status"].toInt(-1) == 0;
@@ -314,7 +323,14 @@ class Endurance final : public QObject {
         row["window_visible"] = window && window->isVisible();
         row["window_exposed"] = window && window->isExposed();
         row["window_visibility"] = window ? static_cast<int>(window->visibility()) : -1;
-        row["gui_spectra_published"] = static_cast<double>(published_);
+        row["spectrum_interval_seconds"] = period;
+        row["gui_spectra_published"] =
+            static_cast<qint64>(spectrum_->published.load(std::memory_order_relaxed));
+        row["gui_spectra_synchronized"] =
+            static_cast<qint64>(spectrum_->synchronized.load(std::memory_order_relaxed));
+        row["gui_spectra_presented"] = static_cast<qint64>(presented);
+        row["window_frames_queued_for_presentation"] =
+            static_cast<qint64>(spectrum_->swaps.load(std::memory_order_relaxed));
         row["gui_queue_proxy_last_ms"] = queue_delays_.empty() ? -1 : queue_delays_.back();
         row["status"] = QJsonObject::fromVariantMap(status);
         if (receiver_.audioTrace())
@@ -364,16 +380,28 @@ class Endurance final : public QObject {
         if (!SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED))
             throw std::runtime_error("Cannot prevent automatic standby during test");
 #endif
-        connect(&receiver_, &Controller::spectrumReady, this, [this] { ++published_; });
+        connect(&receiver_, &Controller::spectrumReady, this, [counters = spectrum_] {
+            counters->published.fetch_add(1, std::memory_order_relaxed);
+        });
+        connect(
+            window, &QQuickWindow::beforeSynchronizing, this,
+            [counters = spectrum_] {
+                const auto sequence = counters->published.load(std::memory_order_relaxed);
+                if (sequence !=
+                    counters->synced_sequence.exchange(sequence, std::memory_order_relaxed))
+                    counters->synchronized.fetch_add(1, std::memory_order_relaxed);
+            },
+            Qt::DirectConnection);
         connect(
             window, &QQuickWindow::frameSwapped, this,
-            [this] {
-                if (published_ != last_presented_) {
-                    ++presented_;
-                    last_presented_ = published_;
-                }
+            [counters = spectrum_] {
+                const auto sequence = counters->synced_sequence.load(std::memory_order_relaxed);
+                if (sequence !=
+                    counters->presented_sequence.exchange(sequence, std::memory_order_relaxed))
+                    counters->presented.fetch_add(1, std::memory_order_relaxed);
+                counters->swaps.fetch_add(1, std::memory_order_relaxed);
             },
-            Qt::QueuedConnection);
+            Qt::DirectConnection);
         probe_ = std::jthread([this](std::stop_token token) {
             while (!token.stop_requested()) {
                 const auto sent = std::chrono::steady_clock::now();
