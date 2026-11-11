@@ -22,6 +22,23 @@ cmake --install qt-build
 
 Сведения о коде X.Org из Ubuntu, статически вошедшем в XCB-компоненты Qt, приведены в `THIRD_PARTY_NOTICES.md` и [отчёте аудита](MVP_V0_1_VERIFICATION.md#предварительный-аудит-linux-preview). При публикации архивов нужно подтвердить предоставление соответствующих исходников для всей поставки. [Условия LGPL по документации Qt](https://www.qt.io/development/open-source-lgpl-obligations)
 
+## Исходные пакеты Ubuntu для X.Org
+
+Расширенный архив `sdr-next-0.1-preview-20261111-linux-qt-xorg-source.tar.gz` содержит исходники Qt и оригинальные исходные пакеты Ubuntu в каталоге `ubuntu-xorg-source/packages/`. Использованы версии `libx11 2:1.7.5-1ubuntu0.4`, `libxcb 1.14-3ubuntu3` и `xcb-util 0.4.0-1build2`. Файл `ubuntu-xorg-source/static-inputs.tsv` связывает восемь входных библиотек с dev-пакетами и их исходниками и содержит SHA-256 библиотек. [Ubuntu libxcb](https://launchpad.net/ubuntu/+source/libxcb/1.14-3ubuntu3)
+
+Из каталога `ubuntu-xorg-source/packages/` проверьте и распакуйте поставленные исходники:
+
+```sh
+sha256sum -c ../SHA256SUMS
+dpkg-source -x libx11_1.7.5-1ubuntu0.4.dsc
+dpkg-source -x libxcb_1.14-3ubuntu3.dsc
+dpkg-source -x xcb-util_0.4.0-1build2.dsc
+```
+
+Для повторного получения используйте `apt-get source --download-only libx11=2:1.7.5-1ubuntu0.4 libxcb=1.14-3ubuntu3 xcb-util=0.4.0-1build2` с подписанными источниками `deb-src` Ubuntu Jammy (`main`, `jammy-updates`, `jammy-security`). При распаковке `dpkg-source` может сообщить об отсутствии ключей отдельных авторов загрузок. При получении через APT проверены подписи индексов Ubuntu и контрольные суммы файлов по этим индексам.
+
+Сборка Ubuntu-пакетов использует зависимости из их `debian/control`. В частности, `libxcb` генерирует код протоколов с помощью `xcb-proto`. Этот архив сохраняет исходные пакеты и патчи, использованные как основание для сверки. Полное восстановление окружения сборки Ubuntu-пакетов и повторная компиляция из архива пока не проверены.
+
 ## Уведомления в бинарном пакете
 
 После `cmake --install` для Linux portable и до создания tar.gz запустите из корня SDR Next:
