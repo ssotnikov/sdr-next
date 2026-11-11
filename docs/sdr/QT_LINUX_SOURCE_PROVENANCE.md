@@ -21,3 +21,16 @@ cmake --install qt-build
 В эталонной сборке использованы release-флаги `-DNDEBUG -O2`. `local-ubuntu-build-packages.tsv` в архиве перечисляет пакеты, загруженные для локального sysroot, и их версии. Этот список дополняет системные зависимости Ubuntu. Итоговую конфигурацию можно сверить с `qt-config-summary.txt` в архиве и с Qt SPDX в бинарной поставке.
 
 Сведения о коде X.Org из Ubuntu, статически вошедшем в XCB-компоненты Qt, приведены в `THIRD_PARTY_NOTICES.md` и [отчёте аудита](MVP_V0_1_VERIFICATION.md#предварительный-аудит-linux-preview). При публикации архивов нужно подтвердить предоставление соответствующих исходников для всей поставки. [Условия LGPL по документации Qt](https://www.qt.io/development/open-source-lgpl-obligations)
+
+## Уведомления в бинарном пакете
+
+После `cmake --install` для Linux portable и до создания tar.gz запустите из корня SDR Next:
+
+```sh
+curl --fail --location \
+  https://raw.githubusercontent.com/apache/tika/dbcbb368e0a913e1a74cca61347fd6ce24bc6d7e/NOTICE.txt \
+  --output tika-NOTICE.txt
+python3 scripts/collect-linux-qt-notices.py /path/to/staged /path/to/qt-source tika-NOTICE.txt
+```
+
+Используйте дерево исходников, из которого собран SDK. Скрипт рассчитан на формат tag/value SPDX закреплённой сборки Qt. Он проверяет контрольные суммы связанных SPDX, сверяет идентификаторы и выражения лицензий с исходными записями и проверяет SHA-256 файла Apache Tika. Результат появится в новом каталоге `licenses/qt-attributions/`. Для повторной упаковки используйте свежий staging.

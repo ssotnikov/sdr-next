@@ -12,6 +12,8 @@ The Windows build uses the native multimedia backend. The packaging script disab
 
 The Linux preview built from the pinned Qt sources uses PulseAudio for audio output and includes Qt's XCB and Wayland client plugins. FFmpeg is disabled in this build. The Qt SDK's SPDX documents are included under `licenses/qt-sbom/` when supplied by the SDK. These documents describe the SDK build, including files that are outside this package, and record the SDK checksums before deployment. The source revisions used for the Linux build are recorded in `dependencies.lock.json` in the application source repository.
 
+The audited Linux preview includes a Qt attribution index and license texts under `licenses/qt-attributions/`. The index maps each reachable Qt SPDX attribution record to its source entry and included texts. It also includes records for platform-conditional code. The corresponding Qt source companion contains the Public Suffix List data used by Qt Network, under MPL-2.0.
+
 The Ubuntu 22.04 reference build of Qt contains code from the X.Org libraries `libx11` 2:1.7.5-1ubuntu0.4, `libxcb` 1.14-3ubuntu3, and `xcb-util` 0.4.0-1build2. The copyright and license notices from the Ubuntu development packages used for this build are in `licenses/linux-qt/`. Review the XCB link inputs when rebuilding Qt with a different toolchain or dependency set.
 
 ## SoapySDR and hardware drivers
