@@ -87,17 +87,11 @@ def main():
         if windows:
             vswhere = Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / (
                 'Microsoft Visual Studio/Installer/vswhere.exe')
-            installation = run(vswhere, '-latest', '-products', '*', '-version', '[17.0,18.0)',
+            installation = run(vswhere, '-latest', '-products', '*', '-version', '[18.0,19.0)',
                                '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
                                '-property', 'installationPath', capture=True)
             if not installation:
-                installation = run(vswhere, '-latest', '-products', '*', '-version', '[18.0,19.0)',
-                                   '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
-                                   '-property', 'installationPath', capture=True)
-                if not installation:
-                    raise ValueError('MSVC 2022 or 2026 C++ tools are required')
-                print('MSVC 2022 absent: using MSVC 2026 as an additional validation profile; '
-                      'this does not qualify the MSVC 2022 release matrix.', flush=True)
+                raise ValueError('Visual Studio 2026 C++ tools are required')
             env['VCPKG_VISUAL_STUDIO_PATH'] = installation
             run('cmd.exe', '/c', str(vcpkg / 'bootstrap-vcpkg.bat'), '-disableMetrics', env=env)
         else:

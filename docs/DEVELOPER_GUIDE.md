@@ -4,25 +4,15 @@
 
 C++20, CMake ≥3.22, Qt **6.10.0** Core/Gui/Qml/Quick/QuickControls2/Multimedia. Согласованная матрица — ADR-013. Qt задаётся через `CMAKE_PREFIX_PATH`, без машинных путей в tracked presets. Скачать SDK можно официальным Qt installer или aqtinstall; download/build caches находятся вне репозитория.
 
-SoapySDR headers ABI 0.8 обнаруживаются через `CMAKE_PREFIX_PATH`/`SDR_SOAPY_INCLUDE_DIR` только при сборке optional модулей устройств. Runtime загружается внутри модулей по C ABI; драйверы устанавливаются отдельно. `SDR_ENABLE_SOAPY=OFF` или отсутствие SDK исключает три Soapy provider из сборки, сохраняя хост, software RX и SDK-пример. Core/GUI не содержат Soapy-кода и списка семейств. Для MSVC runtime/SDK требуется согласованный MSVC 2022; MSVC 2026 проверен дополнительно. Локальная MinGW-сборка — дополнительное свидетельство, не замена MSVC gate.
+SoapySDR headers ABI 0.8 обнаруживаются через `CMAKE_PREFIX_PATH`/`SDR_SOAPY_INCLUDE_DIR` только при сборке optional модулей устройств. Runtime загружается внутри модулей по C ABI; драйверы устанавливаются отдельно. `SDR_ENABLE_SOAPY=OFF` или отсутствие SDK исключает три Soapy provider из сборки, сохраняя хост, software RX и SDK-пример. Core/GUI не содержат Soapy-кода и списка семейств. Для Windows-сборки используется MSVC из Visual Studio 2026. Локальная MinGW-сборка — дополнительное свидетельство, не замена MSVC gate.
 
 ## Ручная установка или дополнение MSVC
 
-Проверено 2026-11-07: на текущем компьютере уже доступны Build Tools 2022 17.14.40, toolset v143 в каталоге 14.44.35207, компилятор MSVC 19.44.35228.0 и Windows SDK 10.0.22621.0. С ними приложение собрано и проверено; дополнительная установка не потребовалась. У Visual Studio Professional 2026 отдельно обнаружены cl/link 14.51.36231, но отсутствуют include/vector и lib/x64/libcmt.lib в этом toolset. Наличие IDE и cl.exe само по себе не подтверждает полный C++ toolchain.
+Выберите установленную Visual Studio 2026 или Build Tools 2026 в **Visual Studio Installer → Modify / Изменить**. Добавьте **Desktop development with C++**, инструменты **MSVC x64/x86** (v145) и Windows SDK. CMake и Ninja можно установить в составе C++ CMake tools for Windows.
 
-Последующее обновление 2026-11-07 завершено: Visual Studio 2026 18.11.12328.437 / MSVC 19.51.36260.0 / toolset 14.51.36231 / SDK 10.0.26100.0 теперь полностью доступны. Пересборка в `build/windows-msvc2026` и CTest 4/4 прошли, включая физический HackRF-сценарий. Для этой отдельной сборки загружен DevShell установки 2026 с `-arch=x64 -host_arch=x64 -vcvars_ver=14.51`, затем использованы Ninja, явные `CMAKE_C_COMPILER=cl`/`CMAKE_CXX_COMPILER=cl` и Qt 6.10.0 msvc2022_64. Старый вывод о недостающих компонентах 2026 относится к состоянию до обновления; штатный `scripts/build.ps1` по-прежнему выбирает согласованный MSVC 2022.
+Откройте **Developer PowerShell for VS 2026** для x64 и проверьте `cl /Bv`. Скрипт `scripts/build.ps1` находит установку 2026 через `vswhere` и загружает окружение самостоятельно. Официальный комплект Qt 6.10.0 для MSVC по-прежнему называется `msvc2022_64`. [Установка инструментов MSVC](https://learn.microsoft.com/en-us/cpp/overview/acquire-msvc?view=msvc-180)
 
-Если нужно установить или восстановить инструменты вручную:
-
-1. Откройте **Visual Studio Installer** из меню «Пуск» либо **Tools → Get Tools and Features** в Visual Studio.
-2. Для согласованного toolchain проекта выберите **Visual Studio Build Tools 2022 → Modify / Изменить**.
-3. Отметьте **Desktop development with C++ / Разработка классических приложений на C++**.
-4. В **Individual components / Отдельные компоненты** проверьте **MSVC v143 — VS 2022 C++ x64/x86 build tools** и **Windows 11 SDK 10.0.22621.0** или совместимый установленный SDK. Для CMake-проекта также нужны CMake/Ninja; можно выбрать **C++ CMake tools for Windows** либо использовать отдельные установленные инструменты.
-5. Примените изменения, затем откройте новую **Developer PowerShell for VS 2022** для x64. Обычный PowerShell не обязан находить cl.exe до загрузки developer environment; `scripts/build.ps1` загружает его самостоятельно.
-
-Чтобы дополнить саму IDE 2026, выбирайте её запись в Installer и C++ workload с x64/x86 MSVC и Windows SDK. Это отдельная установка; обновление последнего toolset IDE не меняет автоматически согласованный компилятор проекта. `scripts/build.ps1` выбирает VS 2022 через vswhere, поэтому установленную IDE 2026 можно сохранить.
-
-Источники: [изменение состава Visual Studio](https://learn.microsoft.com/en-us/visualstudio/install/modify-visual-studio?view=visualstudio), [выбор версии MSVC](https://learn.microsoft.com/en-us/cpp/overview/acquire-msvc?view=msvc-170).
+Сборка расширений отдельно от приложения описана в [Plugin SDK Guide](sdr/PLUGIN_SDK.md).
 
 ## Headless (Qt не требуется)
 
@@ -43,7 +33,7 @@ ctest --test-dir build/desktop -C Release --output-on-failure
 build/desktop/bin/sdr_app --smoke-test
 ```
 
-В Windows используйте Developer PowerShell MSVC 2022 и Qt msvc2022_64. У много-конфигурационного генератора binaries находятся в `bin/Release/`; у Ninja/Make — в `bin/`. При запуске из build-каталога Qt/компиляторные DLL должны быть доступны в PATH. Упаковка — отдельный шаг, SDK не заменяет deployed package.
+В Windows используйте Developer PowerShell для Visual Studio 2026 и Qt msvc2022_64. У много-конфигурационного генератора binaries находятся в `bin/Release/`; у Ninja/Make — в `bin/`. При запуске из build-каталога Qt/компиляторные DLL должны быть доступны в PATH. Упаковка — отдельный шаг, SDK не заменяет deployed package.
 
 `sdr_engine_tests` проверяет источник → DSP → запись → файловый RX, metadata count/complete, отклонение перенастройки при записи, duplicate plugin identity и отключение расширений. `--smoke-test` открывает GUI и выходит через 2 секунды; сам по себе не тестирует долгий RX/аудио.
 
@@ -111,14 +101,14 @@ build/desktop/bin/sdr_bench --module build/desktop/bin/devices/sdr_device_hackrf
 
 Машиночитаемые pins: `dependencies.lock.json` и `vcpkg.json`; решение — [ADR-023](sdr/ADR-023-pinned-dependency-acquisition.md). `vcpkg-configuration.json` подключает локальный port SoapySDR 0.8.1#1: он исправляет Linux-путь CMake package, сохраняя архив upstream 0.8.1. Скрипт требует Python 3.10+, Git и сеть. Для `--hardware` дополнительно нужны C++ toolchain, CMake, Ninja и системные build prerequisites. Кеши и SDK размещаются **вне** checkout, в постоянной папке (не `/tmp` для WSL). Скрипт не устанавливает компилятор, драйверы устройств и готовый Qt SDK.
 
-Windows x86-64, Developer PowerShell for VS 2022:
+Windows x86-64, Developer PowerShell for VS 2026:
 
 ```powershell
 python scripts/fetch-dependencies.py --root D:/Tools/sdr-deps --qt-source --hardware
 ./scripts/build.ps1 -QtRoot D:/Tools/Qt/6.10.0/msvc2022_64 -SoapySdkPrefix D:/Tools/sdr-deps/installed/x64-windows -BuildDirectory build/pinned-windows
 ```
 
-`QtRoot` — уже собранный SDK ровно Qt 6.10.0 (официальный msvc2022_64 либо сборка из полученных исходников). Если CMake/Ninja установлены отдельно, добавьте их в PATH. Bootstrap предпочитает MSVC 2022 через vswhere; если его нет, явно сообщает о дополнительном профиле MSVC 2026. Это не заменяет согласованный MSVC 2022; штатный `build.ps1` по-прежнему требует 2022. Директория dependency root должна быть выделенной: скрипт не удаляет чужие данные и отклоняет изменённый checkout.
+`QtRoot` — уже собранный SDK ровно Qt 6.10.0 (официальный msvc2022_64 либо сборка из полученных исходников). Если CMake/Ninja установлены отдельно, добавьте их в PATH. Bootstrap и `build.ps1` выбирают MSVC 2026 через `vswhere`. Директория dependency root должна быть выделенной: скрипт не удаляет чужие данные и отклоняет изменённый checkout.
 
 Ubuntu 22.04/GCC 11 (системные prerequisites устанавливаются администратором):
 
