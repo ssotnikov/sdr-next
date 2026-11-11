@@ -47,7 +47,7 @@ dpkg-source -x xcb-util_0.4.0-1build2.dsc
 curl --fail --location \
   https://raw.githubusercontent.com/apache/tika/dbcbb368e0a913e1a74cca61347fd6ce24bc6d7e/NOTICE.txt \
   --output tika-NOTICE.txt
-python3 scripts/collect-linux-qt-notices.py /path/to/staged /path/to/qt-source tika-NOTICE.txt
+python3 scripts/collect-qt-notices.py /path/to/staged /path/to/qt-source tika-NOTICE.txt
 ```
 
 Используйте дерево исходников, из которого собран SDK. Скрипт рассчитан на формат tag/value SPDX закреплённой сборки Qt. Он проверяет контрольные суммы связанных SPDX, сверяет идентификаторы и выражения лицензий с исходными записями и проверяет SHA-256 файла Apache Tika. Результат появится в новом каталоге `licenses/qt-attributions/`. Для повторной упаковки используйте свежий staging.

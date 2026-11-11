@@ -2,9 +2,19 @@ param(
     [Parameter(Mandatory)][string]$QtRoot,
     [string]$BuildDirectory = 'build/desktop',
     [string]$OutputDirectory = 'dist/sdr-app-0.1-preview-win64',
-    [switch]$WithoutDeviceModules
+    [switch]$WithoutDeviceModules,
+    [string]$QtNoticeSource,
+    [string]$TikaNotice
 )
 $ErrorActionPreference = 'Stop'
+if ([bool]$QtNoticeSource -ne [bool]$TikaNotice) {
+    throw 'Provide both -QtNoticeSource and -TikaNotice to collect Qt attributions.'
+}
+if ($QtNoticeSource) {
+    $QtNoticeSource = (Resolve-Path -LiteralPath $QtNoticeSource).ProviderPath
+    $TikaNotice = (Resolve-Path -LiteralPath $TikaNotice).ProviderPath
+    $noticePython = (Get-Command python -CommandType Application).Source | Select-Object -First 1
+}
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $qtPath = (Resolve-Path -LiteralPath $QtRoot).Path
 $buildPath = [IO.Path]::GetFullPath((Join-Path $projectRoot $BuildDirectory))
@@ -74,6 +84,10 @@ foreach ($name in @('sdr_source_example.dll','sdr_demod_example.dll','source-exa
 }
 if (Test-Path -LiteralPath (Join-Path $binaryFolder 'examples-device')) {
     Copy-Item -LiteralPath (Join-Path $binaryFolder 'examples-device') -Destination (Join-Path $exampleOutput 'device') -Recurse
+}
+if ($QtNoticeSource) {
+    & $noticePython (Join-Path $PSScriptRoot 'collect-qt-notices.py') --windows $outputPath $QtNoticeSource $TikaNotice
+    if ($LASTEXITCODE) { throw 'Qt attribution collection failed; the partial package is not ready.' }
 }
 $files = Get-ChildItem -LiteralPath $outputPath -File -Recurse | ForEach-Object {
     [ordered]@{path=[IO.Path]::GetRelativePath($outputPath,$_.FullName);bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
