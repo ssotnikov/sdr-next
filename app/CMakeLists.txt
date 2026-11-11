@@ -22,6 +22,21 @@ if(MSVC)
   target_compile_options(sdr_app PRIVATE /utf-8 /W4)
 endif()
 install(TARGETS sdr_app RUNTIME DESTINATION bin)
+if(SDR_INSTALL_LINUX_PORTABLE)
+  qt_generate_deploy_qml_app_script(
+    TARGET sdr_app
+    OUTPUT_SCRIPT sdr_deploy_script
+    NO_TRANSLATIONS)
+  install(SCRIPT "${sdr_deploy_script}")
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/portable.txt" "")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/portable.txt" DESTINATION bin)
+  install(FILES
+    "${PROJECT_SOURCE_DIR}/LICENSE"
+    "${PROJECT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
+    "${PROJECT_SOURCE_DIR}/docs/USER_GUIDE.md"
+    DESTINATION .)
+  install(DIRECTORY "${PROJECT_SOURCE_DIR}/third_party/licenses/" DESTINATION licenses/upstream)
+endif()
 
 # Shared by the receiver and its QML integration tests; fonts travel with the executable.
 function(sdr_add_brand_fonts target)

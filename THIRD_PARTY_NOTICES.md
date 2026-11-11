@@ -8,7 +8,7 @@ The application uses dynamically linked Qt Core, Gui, Qml, Quick, QuickControls2
 
 Qt libraries must remain replaceable with compatible builds. The application source code and CMake instructions allow the application to be rebuilt and relinked. The packaging process does not link Qt statically. The terms applicable to the selected modules and their transitive components must be reviewed before the final release.
 
-The Windows build uses the native multimedia backend; automatic inclusion of FFmpeg by the packaging process is disabled. Windows system multimedia components are not copied into the package.
+The Windows build uses the native multimedia backend. The packaging script disables automatic FFmpeg deployment and uses the operating system's ICU library when the deployed copy matches the system file. The package inventory identifies the Microsoft redistributables included with each build.
 
 ## SoapySDR and hardware drivers
 

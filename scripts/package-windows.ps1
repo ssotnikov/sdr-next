@@ -22,6 +22,13 @@ if(-not $WithoutDeviceModules -and (Test-Path -LiteralPath (Join-Path $binaryFol
 [IO.File]::WriteAllText((Join-Path $outputPath 'qt.conf'), "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml`n")
 & (Join-Path $qtPath 'bin/windeployqt.exe') --release --qmldir (Join-Path $projectRoot 'app') --dir $outputPath --no-translations --no-ffmpeg --skip-plugin-types multimedia (Join-Path $outputPath 'sdr_app.exe')
 if ($LASTEXITCODE) { throw 'Qt deployment failed; the partial package is not ready.' }
+$deployedIcu = Join-Path $outputPath 'icuuc.dll'
+$systemIcu = Join-Path $env:SystemRoot 'System32/icuuc.dll'
+if ((Test-Path -LiteralPath $deployedIcu) -and (Test-Path -LiteralPath $systemIcu)) {
+    if ((Get-FileHash -LiteralPath $deployedIcu).Hash -eq (Get-FileHash -LiteralPath $systemIcu).Hash) {
+        Remove-Item -LiteralPath $deployedIcu
+    }
+}
 New-Item -ItemType Directory -Path (Join-Path $outputPath 'multimedia') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $qtPath 'plugins/multimedia/windowsmediaplugin.dll') -Destination (Join-Path $outputPath 'multimedia')
 foreach ($runtime in @('libgcc_s_seh-1.dll','libstdc++-6.dll','libwinpthread-1.dll')) {

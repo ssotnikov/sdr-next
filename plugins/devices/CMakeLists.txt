@@ -19,4 +19,8 @@ foreach(family IN ITEMS hackrf rtlsdr airspy)
   set_target_properties(${target} PROPERTIES PREFIX "" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/devices" LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/devices")
   file(GENERATE OUTPUT "$<TARGET_FILE_DIR:${target}>/${family}.json" CONTENT
     "{\"id\":\"org.sdr.device.${family}\",\"version\":\"0.1.0\",\"api_major\":1,\"api_minor\":0,\"kind\":\"device\",\"platform\":\"${CMAKE_SYSTEM_NAME}\",\"arch\":\"x86_64\",\"license\":\"MIT\",\"library\":\"$<TARGET_FILE_NAME:${target}>\"}")
+  if(SDR_INSTALL_LINUX_PORTABLE)
+    install(TARGETS ${target} LIBRARY DESTINATION bin/devices)
+    install(FILES "$<TARGET_FILE_DIR:${target}>/${family}.json" DESTINATION bin/devices)
+  endif()
 endforeach()

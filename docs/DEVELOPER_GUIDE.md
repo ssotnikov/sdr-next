@@ -57,6 +57,22 @@ build/desktop/bin/sdr_app --smoke-test
 
 Для пакета без аппаратных модулей добавьте `-WithoutDeviceModules`. Для проверки фактического software RX используйте `smoke-windows.ps1 -ReceiveSynthetic`: native Windows GUI обрабатывает минимум 2.4 M IQ и обновляет спектр, затем завершается; это отдельная проверка от длительной/audio приёмки. SDK device-пример помещается в `examples/device`, без автозагрузки.
 
+### Портативный пакет Linux
+
+Используйте Qt 6.10.0 из закреплённых исходников, собранный на Ubuntu 22.04. Для установки Qt runtime и QML нужен `patchelf` в PATH. Укажите каталог Qt SDK и, для сборки аппаратных модулей, префикс SDK SoapySDR. Выберите новую папку для установки.
+
+```sh
+cmake -S . -B build/linux-portable -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DSDR_INSTALL_LINUX_PORTABLE=ON \
+  '-DCMAKE_PREFIX_PATH=/opt/sdr-deps/qt-sdk;/opt/sdr-deps/installed/x64-linux-dynamic'
+cmake --build build/linux-portable --parallel 4
+ctest --test-dir build/linux-portable --output-on-failure
+cmake --install build/linux-portable --prefix "$PWD/dist/sdr-next-0.1-preview-linux-x86_64"
+tar -C dist -czf dist/sdr-next-0.1-preview-linux-x86_64.tar.gz sdr-next-0.1-preview-linux-x86_64
+```
+
+Распакуйте архив в новую папку. Запустите `bin/sdr_app` из распакованного дерева. Для быстрой проверки окна и синтетического IQ запустите `bin/sdr_app --smoke-rx` без путей Qt SDK в окружении. `bin/portable.txt` включает сохранение настроек в `bin/sdr-settings.json`. Модули устройств находятся в `bin/devices`, примеры SDK в `examples`. Для аппаратного RX установите SoapySDR ABI 0.8 и драйвер устройства в системе и проверьте USB-права. Перед распространением пакета проверьте его на утверждённых чистых системах и сверьте фактический состав с лицензиями.
+
 Независимая сборка нового provider без Qt и Soapy: `cmake -S plugins/device-example -B build/device-sdk-independent -G Ninja -DCMAKE_BUILD_TYPE=Release`, затем `cmake --build build/device-sdk-independent`. Установите полученные manifest и библиотеку в applicationDir/devices и обновите список при остановленном RX. Подробный контракт — [Device Provider API](sdr/DEVICE_PLUGIN_API.md).
 
 ## Linux GUI в контейнере
