@@ -218,7 +218,9 @@ int main(int argc, char **argv) {
         engine.post([&] { engine.stop(); });
         wait([&] { return !engine.snapshot().running; }, "Paced source stopped");
         if (argc > 1) {
+            check(argc >= 3, "Both example manifests are required");
             const QString manifest = QString::fromLocal8Bit(argv[1]);
+            const QString demodManifest = QString::fromLocal8Bit(argv[2]);
             engine.post([&] { engine.load_plugin(manifest); });
             wait([&] { return engine.snapshot().plugins.size() == 1; }, "Manifest installed");
             QFile original(manifest);
@@ -246,36 +248,63 @@ int main(int argc, char **argv) {
             engine.post([&] { engine.load_plugin(manifest); });
             wait([&] { return engine.snapshot().error.contains("Duplicate"); },
                  "Duplicate manifest rejected");
-            if (argc > 2) {
-                const auto binary = QString::fromLocal8Bit(argv[2]);
+            for (int i = 3; i < argc; ++i) {
+                const auto binary = QString::fromLocal8Bit(argv[i]);
                 const auto name = QFileInfo(binary).fileName();
                 check(QFile::copy(binary, folder.filePath(name)), "Init-error library copied");
                 auto invalid = good;
                 invalid["id"] = "org.sdr.example.bad";
                 invalid["library"] = name;
-                const auto invalidPath = folder.filePath("init-error.json");
+                const auto invalidPath = folder.filePath(name + ".json");
                 {
                     QFile file(invalidPath);
                     check(file.open(QIODevice::WriteOnly), "Init fixture writable");
                     file.write(QJsonDocument(invalid).toJson());
                 }
+                engine.post([&] { engine.load_plugin(manifest); });
+                wait([&] { return engine.snapshot().error.contains("Duplicate"); },
+                     "Reset previous validation error");
                 engine.post([&, invalidPath] { engine.load_plugin(invalidPath); });
                 wait([&] { return engine.snapshot().error.contains("Plugin rejected"); },
                      "Init failure reported");
                 check(engine.snapshot().plugins.size() == 1,
                       "Init failure rolls back registration");
             }
-            engine.post([&] { engine.start("plugin:org.sdr.example.source", config); });
-            wait([&] { return engine.snapshot().running; }, "Plugin RX started");
+            engine.post([&] { engine.load_plugin(demodManifest); });
+            wait([&] { return engine.snapshot().plugins.size() == 2; }, "Demod manifest installed");
+            engine.post([&] {
+                engine.selected_demod = "org.sdr.example.demod";
+                config.offset_hz = 0;
+                engine.start("plugin:org.sdr.example.source", config);
+            });
+            wait([&] { return engine.snapshot().running && audio.metrics().queued >= 4800; },
+                 "Source IQ passed through the demodulator to the audio buffer");
+            std::vector<float> pluginAudio(256);
+            audio.read(reinterpret_cast<char *>(pluginAudio.data()),
+                       pluginAudio.size() * sizeof(float), engine.snapshot().audio_generation);
+            check(std::any_of(pluginAudio.begin(), pluginAudio.end(),
+                              [](float sample) { return std::abs(sample) > 0.01f; }),
+                  "Demodulator produced nonzero audio");
             engine.post([&] { engine.unload_plugins(); });
             wait([&] { return engine.snapshot().error.contains("Stop RX before unloading"); },
                  "Busy unload rejected");
-            check(engine.snapshot().running && engine.snapshot().plugins.size() == 1,
-                  "Busy module retained");
+            check(engine.snapshot().running && engine.snapshot().plugins.size() == 2,
+                  "Both busy modules retained");
             engine.post([&] { engine.stop(); });
             wait([&] { return !engine.snapshot().running; }, "Plugin RX stopped");
             engine.post([&] { engine.unload_plugins(); });
-            wait([&] { return engine.snapshot().plugins.empty(); }, "Plugin disabled");
+            wait([&] {
+                const auto state = engine.snapshot();
+                return state.plugins.empty() && !state.demods.contains("org.sdr.example.demod");
+            }, "Both plugins disabled");
+            engine.post([&] {
+                engine.load_plugin(manifest);
+                engine.load_plugin(demodManifest);
+            });
+            wait([&] { return engine.snapshot().plugins.size() == 2; }, "Both plugins reloaded");
+            engine.post([&] { engine.unload_plugins(); });
+            wait([&] { return engine.snapshot().plugins.empty(); }, "Reloaded plugins disabled");
+            std::cout << "Plugin RX, audio, incompatible ABI rejection and disable/reload passed\n";
         }
         config.sample_rate = 2400000;
         AudioBuffer traced(true);

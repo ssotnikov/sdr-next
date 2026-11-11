@@ -4,25 +4,45 @@ SDK: [C header](../../sdk/include/sdr/plugin.h), [Rust binding/example](../../sd
 
 ## Сборка независимых примеров
 
-```sh
-cmake -S plugins/source-example -B build/example-source -DSDR_SDK_INCLUDE="$PWD/sdk/include"
-cmake --build build/example-source --config Release
-cmake -S plugins/demod-example -B build/example-demod -DSDR_SDK_INCLUDE="$PWD/sdk/include"
-cmake --build build/example-demod --config Release
-```
+Нужны CMake ≥3.22, Ninja и компилятор C++20. Для Windows x64 откройте Developer PowerShell for Visual Studio 2026. Для Linux x86-64 используйте GCC из [утверждённой матрицы](ADR-013-desktop-platforms.md). Для сборки расширений достаточно каталога `sdk/include` и исходников выбранного примера. Qt и библиотеки приложения не требуются.
 
-Source создаёт комплексный тон 1 kHz; Demodulator — учебный AM-envelope пример с нулевым offset, не замена встроенному канальному фильтру. Оба используют только SDK header, не внутренние заголовки приложения. CMake создаёт JSON manifest рядом с бинарником. В GUI остановите RX и вручную добавьте manifest.
-
-Rust (без сторонних crates):
+Из корня репозитория:
 
 ```sh
-CARGO_TARGET_DIR=build/rust cargo test --manifest-path sdk/rust/Cargo.toml
-CARGO_TARGET_DIR=build/rust cargo build --release --manifest-path sdk/rust/Cargo.toml
+cmake -S plugins/source-example -B build/example-source -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDR_SDK_INCLUDE="$PWD/sdk/include"
+cmake --build build/example-source
+cmake -S plugins/demod-example -B build/example-demod -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDR_SDK_INCLUDE="$PWD/sdk/include"
+cmake --build build/example-demod
 ```
 
-Для Windows/MSVC используйте штатный native Rust target и MSVC 2022. Дополнительный GNU target собирается с `--target x86_64-pc-windows-gnu` и соответствующим linker. У Rust-примера manifest-шаблон Linux; для Windows замените platform на `Windows`, library на `sdr_plugin_api.dll`, скопируйте manifest рядом с DLL.
+Каждая сборка создаёт соседние библиотеку (`.dll` или `.so`) и manifest (`source-example.json` или `demod-example.json`). При переносе копируйте пару файлов. Source выдаёт комплексный тон 1 кГц. Demodulator извлекает AM-огибающую при нулевом смещении и частоте аудио 48 кГц. Для прослушивания устойчивого тона с этим демодулятором подайте AM-модулированный IQ. При совместном запуске двух примеров Source имеет постоянную огибающую, поэтому звук Demodulator после переходного участка затихает.
 
-Проверка реального вызова Rust из C++ host: `sdr_core_tests <source-library> <demod-library> <rust-library> [bad-library]`. Пути из собственной сборки, не посторонние DLL. Тест создаёт instance, вызывает read и уничтожает его до выгрузки библиотеки.
+## Rust
+
+Crate `sdk/rust` предоставляет Rust-представления структур C ABI и собирает Source-пример без внешних crates. На Windows используйте target `x86_64-pc-windows-msvc` в том же Developer PowerShell. На Linux используйте `x86_64-unknown-linux-gnu`.
+
+```sh
+cargo test --locked --offline --manifest-path sdk/rust/Cargo.toml --target-dir build/rust
+cargo build --locked --offline --release --manifest-path sdk/rust/Cargo.toml --target-dir build/rust
+```
+
+На Linux скопируйте `sdk/rust/rust-source.json` рядом с `build/rust/release/libsdr_plugin_api.so`. На Windows разместите копию manifest рядом с `build/rust/release/sdr_plugin_api.dll` и задайте в ней `"platform": "Windows"` и `"library": "sdr_plugin_api.dll"`.
+
+Для проверки FFI передайте тестовому хосту три абсолютных пути:
+
+```text
+sdr_core_tests <source-library> <demod-library> <rust-library>
+```
+
+Тестовый хост создаёт, настраивает и вызывает экземпляры через ABI, проверяет обработку ошибки конфигурации и время жизни Rust-модуля. Тесты Cargo отдельно проверяют инициализацию Rust ABI и вызов Source. Результаты на обеих платформах приведены в [протоколе SDK](PLUGIN_SDK_VERIFICATION.md).
+
+## Установка и отключение
+
+1. Остановите RX и в панели расширений выберите «Добавить manifest…». Укажите соседний JSON доверенного модуля. Повторите для второго примера.
+2. Выберите `Example tone source` как источник и демодулятор `org.sdr.example.demod` в списке режимов. Установите смещение 0 и запустите RX. Спектр показывает IQ от Source, аудиобуфер получает результат Demodulator.
+3. Остановите RX, затем нажмите «Отключить расширения». Оба пункта исчезнут из списков. После этого библиотеки можно заменить и снова загрузить их manifest.
+
+Хост отклоняет выгрузку во время RX. При отказе в регистрации проверьте JSON, ABI, архитектуру, ID и имя соседней библиотеки. Нативный код исполняется внутри процесса с правами приложения. Сбой нативного кода может завершить приложение.
 
 ## Manifest
 

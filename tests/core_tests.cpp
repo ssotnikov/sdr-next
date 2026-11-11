@@ -220,24 +220,48 @@ int main(int argc, char **argv) {
                 module.reset();
                 check(instance.read(b) && b.samples.size() == sdr::block_size,
                       "Module held during instance lifetime");
+                const auto expectedPhase = 2 * std::numbers::pi * 1000 / config.sample_rate;
+                check(std::abs(std::arg(b.samples[1]) - expectedPhase) < 1e-6,
+                      "C++ Source IQ has the expected phase increment");
             }
             rejects([&] { sdr::PluginModule invalid(argv[1], "wrong.id", SDR_SOURCE); });
             auto demod = std::make_shared<sdr::PluginModule>(argv[2], "org.sdr.example.demod",
                                                              SDR_DEMODULATOR);
+            config.mode = "AM";
             sdr::PluginInstance instance(demod, config);
-            std::vector<float> audio;
-            instance.process(tone, audio);
-            check(!audio.empty(), "Demod plugin call");
-            sdr::PluginModule sourceModule(argv[1], "org.sdr.example.source", SDR_SOURCE);
-            auto api = sourceModule.api();
-            (void)api;
+            auto amSource = sdr::open_source("synthetic", config);
+            std::vector<float> audio, part;
+            for (int block = 0; block < 16; ++block) {
+                check(amSource->read(b), "AM input block available");
+                instance.process(b.samples, part);
+                audio.insert(audio.end(), part.begin(), part.end());
+            }
+            check(correlation(audio, 1000) > 0.04 && tone_fit(audio, 1000) > 0.95,
+                  "AM demodulator recovers the 1 kHz modulation tone");
+            auto invalidConfig = config;
+            invalidConfig.offset_hz = 1000;
+            rejects([&] { sdr::PluginInstance rejected(demod, invalidConfig); });
+            std::cout << "C++ Source IQ and Demodulator audio passed\n";
         }
         if (argc >= 4 && std::string(argv[3]).size()) {
             auto rust = std::make_shared<sdr::PluginModule>(argv[3], "org.sdr.example.rust-source",
                                                             SDR_SOURCE);
             sdr::Config config;
-            sdr::PluginInstance instance(rust, config);
-            check(instance.read(b) && !b.samples.empty(), "Rust source called from C++ host");
+            auto invalidConfig = config;
+            invalidConfig.sample_rate = 1;
+            rejects([&] { sdr::PluginInstance rejected(rust, invalidConfig); });
+            const std::weak_ptr<sdr::PluginModule> lifetime = rust;
+            {
+                sdr::PluginInstance instance(rust, config);
+                rust.reset();
+                check(!lifetime.expired() && instance.read(b) && b.samples.size() == sdr::block_size,
+                      "Rust source called from C++ host with module held by instance");
+                const auto expectedPhase = 2 * std::numbers::pi * 1000 / config.sample_rate;
+                check(std::abs(std::arg(b.samples[1]) - expectedPhase) < 1e-6,
+                      "Rust Source IQ has the expected phase increment");
+            }
+            check(lifetime.expired(), "Rust module released after destroying the instance");
+            std::cout << "Rust Source FFI, configuration rejection and teardown passed\n";
         }
         for (int i = 4; i < argc; ++i)
             rejects([&] { sdr::PluginModule invalid(argv[i], "org.sdr.example.bad", SDR_SOURCE); });

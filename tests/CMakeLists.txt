@@ -47,7 +47,11 @@ if(SDR_BUILD_GUI)
   add_executable(sdr_engine_tests engine_tests.cpp ../app/engine.cpp)
   target_include_directories(sdr_engine_tests PRIVATE ../app)
   target_link_libraries(sdr_engine_tests PRIVATE sdr_core Qt6::Core)
-  add_test(NAME engine COMMAND sdr_engine_tests "$<TARGET_FILE_DIR:sdr_source_example>/source-example.json" "$<TARGET_FILE:sdr_bad_plugin_4>")
+  add_test(NAME engine COMMAND sdr_engine_tests
+    "$<TARGET_FILE_DIR:sdr_source_example>/source-example.json"
+    "$<TARGET_FILE_DIR:sdr_demod_example>/demod-example.json"
+    "$<TARGET_FILE:sdr_bad_plugin>"
+    "$<TARGET_FILE:sdr_bad_plugin_4>")
   set_tests_properties(engine PROPERTIES TIMEOUT 60)
   if(NOT APPLE)
     find_package(Qt6 6.10.0 EXACT REQUIRED COMPONENTS QuickTest)
