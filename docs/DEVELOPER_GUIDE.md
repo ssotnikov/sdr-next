@@ -73,6 +73,8 @@ tar -C dist -czf dist/sdr-next-0.1-preview-linux-x86_64.tar.gz sdr-next-0.1-prev
 
 Распакуйте архив в новую папку. Запустите `bin/sdr_app` из распакованного дерева. Для быстрой проверки окна и синтетического IQ запустите `bin/sdr_app --smoke-rx` без путей Qt SDK в окружении. `bin/portable.txt` включает сохранение настроек в `bin/sdr-settings.json`. Модули устройств находятся в `bin/devices`, примеры SDK в `examples`. Для аппаратного RX установите SoapySDR ABI 0.8 и драйвер устройства в системе и проверьте USB-права. Перед распространением пакета проверьте его на утверждённых чистых системах и сверьте фактический состав с лицензиями.
 
+Для запуска через X11 на Ubuntu 22.04 проверьте наличие системных пакетов `libxcb-cursor0` и `libxkbcommon-x11-0`. Они предоставляют `libxcb-cursor.so.0` и `libxkbcommon-x11.so.0`, которые загружает Qt XCB. При сборке самого Qt нужны также `libxcb-cursor-dev`, `libxkbcommon-x11-dev` и заголовки XCB. Если пакеты распакованы вручную в локальный sysroot, распакуйте вместе с `-dev` пакетом соответствующий runtime: без него ссылка `libxkbcommon-x11.so` в sysroot не разрешается при линковке. Полный перечень runtime-зависимостей определяется по итоговому архиву.
+
 Независимая сборка нового provider без Qt и Soapy: `cmake -S plugins/device-example -B build/device-sdk-independent -G Ninja -DCMAKE_BUILD_TYPE=Release`, затем `cmake --build build/device-sdk-independent`. Установите полученные manifest и библиотеку в applicationDir/devices и обновите список при остановленном RX. Подробный контракт — [Device Provider API](sdr/DEVICE_PLUGIN_API.md).
 
 ## Linux GUI в контейнере
