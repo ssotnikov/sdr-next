@@ -218,3 +218,20 @@ Qt 6.10.0 и SDR Next собраны на Ubuntu 22.04.5 под WSL с GCC 11.4.
 Получены десять файлов трёх исходных пакетов через APT с проверкой подписанных индексов Ubuntu. `dpkg-source` распаковал все три пакета и применил изменения Ubuntu, версии сверены с `debian/changelog`. Ключи подписантов отдельных `.dsc` отсутствовали в локальном наборе ключей. Отдельно подтверждены подписи всех трёх `InRelease` ключом архива Ubuntu. Журналы `build/wsl-ubuntu-2204-core/xorg-source-{acquisition,verification,companion}.log`. [Инструкция и состав архива](QT_LINUX_SOURCE_PROVENANCE.md#исходные-пакеты-ubuntu-для-xorg)
 
 Расширенный архив `dist/sdr-next-0.1-preview-20261111-linux-qt-xorg-source.tar.gz` объединяет исходники Qt и исходные пакеты X.Org. Повторная распаковка и проверка SHA-256 вложенных файлов прошли. Пересборка исходных пакетов Ubuntu, в том числе генерация XCB с исходной версией `xcb-proto`, остаётся непроверенной. Для 7.7 также остаются проверка предоставления исходников при публикации и аудит Windows.
+
+## Проверка Windows preview без дополнительных графических DLL
+
+На эталонной Windows 11 build 26300 две копии одного preview запущены из путей с пробелами, с системным `PATH` и отключёнными дисковыми кешами Qt для QML и графики. Из второй копии исключены `d3dcompiler_47.dll`, `dxcompiler.dll`, `dxil.dll`, `opengl32sw.dll` и установщик `vc_redist.x64.exe`. Контрольные суммы общих файлов совпали. Все 12 запусков `--smoke-rx` завершились с кодом 0. Фактический режим определён по журналу Qt, загрузка DLL проверена выборками модулей процесса по полным путям. [Графические режимы Qt](https://doc.qt.io/qt-6.10/windows-graphics.html)
+
+| Запрошенный режим | Полная копия | Копия без пяти файлов |
+|---|---|---|
+| D3D11 по умолчанию | AMD Radeon | AMD Radeon |
+| D3D11 WARP | Microsoft Basic Render Driver | Microsoft Basic Render Driver |
+| D3D12 | AMD Radeon, QRhi создан | AMD Radeon, QRhi создан |
+| Аппаратный OpenGL | AMD Radeon, OpenGL 4.6 | AMD Radeon, OpenGL 4.6 |
+| Программный OpenGL | Mesa 11.2.2 llvmpipe, загрузка `opengl32sw.dll` из пакета | Qt сообщил об ошибке загрузки и перешёл на системный OpenGL AMD. Программный режим не подтверждён |
+| Программный backend Qt Quick | Загружен `software` | Загружен `software` |
+
+Три DLL компиляторов в выборках не обнаружены, включая полную копию. D3D12 smoke не проверяет шейдеры Shader Model 6, для которых Qt может загружать DXC. В обеих копиях библиотеки VC++ загружены из System32. Отсутствие установщика в копии проверено на машине с установленным runtime. Чистая Windows 10, загрузка на машине без VC++ Runtime и поведение OpenGL без рабочего GPU-драйвера остаются непроверенными. [Загрузка DXC в Qt 6.10.0](https://github.com/qt/qtbase/blob/v6.10.0/src/gui/rhi/qrhid3d12.cpp)
+
+В пробном выводе `windeployqt --dry-run --list mapping` с доступным Windows SDK параметры `--no-system-d3d-compiler --no-system-dxc-compiler --no-opengl-sw --no-compiler-runtime` исключили ровно эти пять файлов. Журналы запуска, пути модулей и обе карты находятся в `build/endurance/windows-redist-comparison-2d9fa9ce/`. Это диагностические копии. Состав поставки и скрипт упаковки сохраняют текущую конфигурацию. Для 7.7 остаются итоговый выбор состава Windows-поставки, уведомления и предоставление соответствующих исходников.
