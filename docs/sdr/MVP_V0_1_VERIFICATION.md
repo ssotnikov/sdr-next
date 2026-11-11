@@ -181,3 +181,22 @@ Qt 6.10.0 и SDR Next собраны на Ubuntu 22.04.5 под WSL с GCC 11.4.
 Команды линковки и определённые символы подтвердили код из статических библиотек Ubuntu `libX11-xcb`, `xcb-randr`, `xcb-shape`, `xcb-sync`, `xcb-util`, `xcb-xfixes` и `xcb-xkb` внутри `libQt6XcbQpa`. Код `xcb-glx` найден в `libqxcb-glx-integration.so`. В Linux-архив добавлены три точных файла copyright из использованных dev-пакетов Ubuntu и пять SPDX из Qt SDK. В новом `dist/sdr-next-0.1-preview-20261111-linux-x86_64-notices.tar.gz` все 113 ELF побайтово совпали с предыдущим preview. После распаковки повторно прошёл RX через XCB и Wayland, проверены контрольная сумма архива и CTest 7/7. Журнал `build/wsl-ubuntu-2204-core/portable-pinned-qt-notices.log`.
 
 Для закрытия 7.7 остаются сверка уведомлений компонентов, встроенных в Qt, проверка способа предоставления соответствующих исходников и условий распространения пяти оставшихся сторонних файлов Windows вне Qt SPDX. [Условия LGPL по документации Qt](https://www.qt.io/development/open-source-lgpl-obligations)
+
+## Исходники Qt и дополнительные файлы Windows
+
+В `dist/sdr-next-0.1-preview-20261111-linux-qt-6.10.0-source.tar.gz` сохранены superproject и пять модулей Qt из чистых деревьев с ревизиями, указанными в `dependencies.lock.json`. Проверены состав архива и SHA-256. В архив включены параметры сборки и версии пакетов локального sysroot. После распаковки CMake сгенерировал проект с XCB, Wayland и PulseAudio. Для этого в локальном sysroot явно выбраны три системные библиотеки XCB, как в исходной сборке. Журнал `build/wsl-ubuntu-2204-core/qt-source-companion-configure-final.log`. [Состав и инструкция сборки](QT_LINUX_SOURCE_PROVENANCE.md)
+
+Обход связей `DEPENDS_ON` от 106 поставляемых Qt ELF в SPDX выделил 61 запись об исходном стороннем коде, один встроенный модуль (`BundledTLSF`) и 23 системные зависимости. Это список для сверки уведомлений. Например, SPDX Qt Gui перечисляет атрибуцию кода Direct3D 12 в Linux SDK, поэтому наличие связи само по себе не подтверждает компиляцию этого кода. Локальный список `build/wsl-ubuntu-2204-core/qt-spdx-attribution-review.tsv`.
+
+Все пять Windows-файлов совпали по SHA-256 с локальными источниками из карты `windeployqt`. Проверка Authenticode прошла для всех пяти. Microsoft подписала четыре файла, The Qt Company подписала `opengl32sw.dll`.
+
+| Файлы | Установленный источник и версия | Основание и остаток проверки |
+|---|---|---|
+| `d3dcompiler_47.dll` | Windows SDK `Redist/D3D/x64`, 10.0.26100.9457 | Указан в списке для классических Windows-приложений. [REDIST Windows SDK](https://learn.microsoft.com/en-us/legal/windows-sdk/redist) |
+| `dxcompiler.dll`, `dxil.dll` | Windows SDK `Redist/D3D/x64`, оба 1.9.2602.17 | Оба указаны в том же списке. Для этой пары проверяется происхождение из SDK. [REDIST Windows SDK](https://learn.microsoft.com/en-us/legal/windows-sdk/redist) |
+| `vc_redist.x64.exe` | Visual Studio 2026 Professional `VC/Redist`, 14.51.36247.0 | Отдельный подписанный установщик VC++ Runtime. Проверка условий применимой лицензии Visual Studio остаётся в процедуре выпуска. [Visual Studio 2026 REDIST](https://learn.microsoft.com/en-us/visualstudio/releases/2026/redistribution) |
+| `opengl32sw.dll` | Qt SDK 6.10.0. Строки бинарника указывают Mesa 11.2.2 и LLVM 3.6.2 | Программный OpenGL. Нужны полные уведомления Mesa/LLVM для этого бинарника либо отдельная проверка графических режимов пакета без этой DLL. [Архив Qt llvmpipe](https://download.qt.io/development_releases/prebuilt/llvmpipe/windows/) |
+
+В отдельной копии Windows preview без `opengl32sw.dll` прошёл синтетический RX со штатным D3D11 на Radeon, программным D3D11 на Microsoft Basic Render Driver и программным backend Qt Quick. Выбранные backend и адаптер подтверждены журналом Qt. Это результат эталонной Windows 11. Проверка Windows 10 и сценария явного выбора программного OpenGL остаётся открытой. Локальные журналы в `build/endurance/windows-no-mesa-6730996a/`. [Графические режимы Qt для Windows](https://doc.qt.io/qt-6.10/windows-graphics.html)
+
+7.7 остаётся открытой. Нужно завершить сверку лицензий встроенного кода с уведомлениями, определить условия включения Microsoft Redist в публичную поставку и подтвердить предоставление соответствующих исходников для неё. Локальные архивы не публиковались. [Условия Windows SDK](https://learn.microsoft.com/en-us/legal/windows-sdk/license)
