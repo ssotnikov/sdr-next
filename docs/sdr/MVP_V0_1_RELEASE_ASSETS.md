@@ -1,0 +1,35 @@
+# Локальные артефакты кандидата SDR Next 0.1
+
+Windows-кандидат собирается с `-WithoutOptionalWindowsBinaries` и отдельным получением Microsoft Visual C++ v14 x64 Runtime. Он использует динамические библиотеки Qt и штатный графический стек Windows. Для D3D11, WARP и программного backend Qt Quick действуют результаты испытаний ниже. Явный выбор Mesa software OpenGL требует дополнительной DLL, исключённой из кандидата. Итоговое решение о публичной поставке принимается после проверок 7.5–7.7. [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) · [Графические режимы Qt](https://doc.qt.io/qt-6.10/windows-graphics.html)
+
+## Файлы и контрольные суммы
+
+Каждый бинарный архив сопоставлен с отдельным архивом исходников Qt. Linux-архив исходников также содержит исходные пакеты X.Org, соответствующие статическим входам линковки. [Происхождение Windows Qt](QT_WINDOWS_SOURCE_PROVENANCE.md) · [Происхождение Linux Qt и X.Org](QT_LINUX_SOURCE_PROVENANCE.md)
+
+| Платформа | Содержимое | Файл | SHA-256 |
+| --- | --- | --- | --- |
+| Windows x64 | Бинарный ZIP | `sdr-next-0.1-preview-20261111-win64-candidate.zip` | `03ece145dd8a12dfafbd6ea37ca30204c149fa1dce6f1eaf002052076d3bc389` |
+| Windows x64 | Исходники Qt 6.10.0 | `sdr-next-0.1-preview-20261111-win64-qt-6.10.0-source.tar.gz` | `a985920ee0676a2e6269784a3e4e4756c10eba4421bce97f878cb574ca9cf496` |
+| Linux x86-64 | Бинарный архив | `sdr-next-0.1-preview-20261111-linux-x86_64-attributions.tar.gz` | `333abc69ab777482c2afb2fa00bf52d00690a52305afba99bcdb8dd7613c30e5` |
+| Linux x86-64 | Исходники Qt 6.10.0 и X.Org | `sdr-next-0.1-preview-20261111-linux-qt-xorg-source.tar.gz` | `6c5193e2ea20c7c8e0d0fdd469945fd3c64a76b4fe3668a2c32abc2289424b30` |
+
+## Проверка выдачи исходников
+
+Файлы скачаны полностью по HTTP с временного локального сервера на loopback. SHA-256 полученных данных совпали с таблицей. Для публичного выпуска разместить бинарный архив, соответствующие исходники и контрольные суммы рядом, указать способ замены библиотек и дать ссылку на исходники приложения из точной ревизии выпуска. После размещения повторить скачивание по фактическим ссылкам без авторизации и сравнить SHA-256. Проверка опубликованных ссылок и пересборка Windows Qt из исходного архива остаются открытыми. [Обязательства при использовании Qt по LGPL](https://www.qt.io/development/open-source-lgpl-obligations)
+
+## Сборка и проверка Windows
+
+Windows-бинарники собраны из ревизии `19a66ada6dab4dfec2f57a1f8f12190f1182a7ec` с Qt 6.10.0, MSVC 19.51.36260.0 и заголовками SoapySDR из закреплённого SDK. CTest прошёл 8/8. MSVC 2022 на машине отсутствовал, поэтому результат с MSVC 2026 учитывается как дополнительный к согласованной матрице [ADR-013](ADR-013-desktop-platforms.md).
+
+После распаковки ZIP в путь с пробелами сверены размеры и SHA-256 всех 1 496 файлов манифеста. Все 86 Qt DLL совпали с инвентарём архива исходников. В пакете 54 записи Qt SPDX и 67 текстов лицензий и уведомлений. В комплекте три модуля устройств. Пять исключённых файлов отсутствуют.
+
+На эталонной Windows 11 build 26300 синтетический RX завершился успешно во всех трёх запусках с системным `PATH`. Журналы подтвердили D3D11 на AMD Radeon, D3D11 WARP на Microsoft Basic Render Driver и программный backend Qt Quick. Проверка использовала уже установленный VC++ Runtime. Отдельных чистых сред Windows 10 и 11 для проверки установки runtime и первого запуска не было. Журналы в `build/endurance/windows-candidate-*.log`.
+
+Параметры штатного упаковщика для кандидата. Пути к исходникам и Tika NOTICE заданы в [инструкции по атрибуции Windows Qt](QT_WINDOWS_SOURCE_PROVENANCE.md#уведомления-для-windows-пакета).
+
+```powershell
+.\scripts\package-windows.ps1 -QtRoot $qtSdk -BuildDirectory $buildDir -OutputDirectory $candidateDir `
+    -WithoutOptionalWindowsBinaries -QtNoticeSource $verifiedQtSource -TikaNotice $tikaNotice
+```
+
+На чистых Windows 10 22H2 и Windows 11 проверить установку VC++ Runtime из официального источника, запуск через `Start-SDR.cmd` и синтетический RX с системным `PATH`. Проверить звук и обновление спектра, D3D11 и WARP, затем задокументировать версии ОС, runtime, драйвера и выбранный Qt backend. Физические проверки HackRF учитываются отдельно по протоколу приёмки.

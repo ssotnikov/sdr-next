@@ -3,6 +3,7 @@ param(
     [string]$BuildDirectory = 'build/desktop',
     [string]$OutputDirectory = 'dist/sdr-app-0.1-preview-win64',
     [switch]$WithoutDeviceModules,
+    [switch]$WithoutOptionalWindowsBinaries,
     [string]$QtNoticeSource,
     [string]$TikaNotice
 )
@@ -30,7 +31,12 @@ if(-not $WithoutDeviceModules -and (Test-Path -LiteralPath (Join-Path $binaryFol
     Copy-Item -LiteralPath (Join-Path $binaryFolder 'devices') -Destination (Join-Path $outputPath 'devices') -Recurse
 }
 [IO.File]::WriteAllText((Join-Path $outputPath 'qt.conf'), "[Paths]`nPrefix=.`nPlugins=.`nQmlImports=qml`n")
-& (Join-Path $qtPath 'bin/windeployqt.exe') --release --qmldir (Join-Path $projectRoot 'app') --dir $outputPath --no-translations --no-ffmpeg --skip-plugin-types multimedia (Join-Path $outputPath 'sdr_app.exe')
+$deployOptions = @('--release', '--qmldir', (Join-Path $projectRoot 'app'), '--dir', $outputPath,
+    '--no-translations', '--no-ffmpeg', '--skip-plugin-types', 'multimedia')
+if ($WithoutOptionalWindowsBinaries) {
+    $deployOptions += @('--no-system-d3d-compiler', '--no-system-dxc-compiler', '--no-opengl-sw', '--no-compiler-runtime')
+}
+& (Join-Path $qtPath 'bin/windeployqt.exe') @deployOptions (Join-Path $outputPath 'sdr_app.exe')
 if ($LASTEXITCODE) { throw 'Qt deployment failed; the partial package is not ready.' }
 $deployedIcu = Join-Path $outputPath 'icuuc.dll'
 $systemIcu = Join-Path $env:SystemRoot 'System32/icuuc.dll'
@@ -88,6 +94,25 @@ if (Test-Path -LiteralPath (Join-Path $binaryFolder 'examples-device')) {
 if ($QtNoticeSource) {
     & $noticePython (Join-Path $PSScriptRoot 'collect-qt-notices.py') --windows $outputPath $QtNoticeSource $TikaNotice
     if ($LASTEXITCODE) { throw 'Qt attribution collection failed; the partial package is not ready.' }
+}
+if ($WithoutOptionalWindowsBinaries) {
+    $excluded = @('opengl32sw.dll', 'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll', 'vc_redist.x64.exe')
+    $unexpected = Get-ChildItem -LiteralPath $outputPath -File -Recurse | Where-Object { $_.Name -in $excluded }
+    if ($unexpected) { throw "Excluded Windows binaries found: $($unexpected.Name -join ', ')" }
+
+    $prerequisites = @'
+# Windows x64 prerequisites
+
+For the MSVC build, install the x64 Microsoft Visual C++ v14 Redistributable
+from [Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+if the required version is missing. Use a release at least as recent as the
+build tools. Then open Start-SDR.cmd.
+
+The default Qt Quick backend uses Direct3D 11. This package relies on the
+Windows graphics stack and contains no Mesa software OpenGL library.
+For receiver driver and source setup, see [USER_GUIDE.md](USER_GUIDE.md).
+'@
+    [IO.File]::WriteAllText((Join-Path $outputPath 'WINDOWS_PREREQUISITES.md'), $prerequisites)
 }
 $files = Get-ChildItem -LiteralPath $outputPath -File -Recurse | ForEach-Object {
     [ordered]@{path=[IO.Path]::GetRelativePath($outputPath,$_.FullName);bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
