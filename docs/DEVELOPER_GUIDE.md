@@ -75,6 +75,8 @@ tar -C dist -czf dist/sdr-next-0.1-preview-linux-x86_64.tar.gz sdr-next-0.1-prev
 
 Для запуска через X11 на Ubuntu 22.04 проверьте наличие системных пакетов `libxcb-cursor0` и `libxkbcommon-x11-0`. Они предоставляют `libxcb-cursor.so.0` и `libxkbcommon-x11.so.0`, которые загружает Qt XCB. При сборке самого Qt нужны также `libxcb-cursor-dev`, `libxkbcommon-x11-dev` и заголовки XCB. Если пакеты распакованы вручную в локальный sysroot, распакуйте вместе с `-dev` пакетом соответствующий runtime: без него ссылка `libxkbcommon-x11.so` в sysroot не разрешается при линковке. Полный перечень runtime-зависимостей определяется по итоговому архиву.
 
+Для аудита сохраняйте SPDX из фактически использованного Qt SDK. Установка Linux-пакета копирует доступные файлы из `<Qt SDK>/sbom` в `licenses/qt-sbom`. Сверяйте пути из SPDX с составом итогового архива. Qt deployment может изменить RUNPATH, поэтому контрольные суммы архивируемых файлов вычисляйте после установки. Уведомления в `licenses/linux-qt` относятся к статическим входам XCB в эталонной сборке на Ubuntu 22.04.
+
 Независимая сборка нового provider без Qt и Soapy: `cmake -S plugins/device-example -B build/device-sdk-independent -G Ninja -DCMAKE_BUILD_TYPE=Release`, затем `cmake --build build/device-sdk-independent`. Установите полученные manifest и библиотеку в applicationDir/devices и обновите список при остановленном RX. Подробный контракт — [Device Provider API](sdr/DEVICE_PLUGIN_API.md).
 
 ## Linux GUI в контейнере

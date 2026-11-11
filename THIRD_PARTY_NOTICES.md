@@ -10,6 +10,10 @@ Qt libraries must remain replaceable with compatible builds. The application sou
 
 The Windows build uses the native multimedia backend. The packaging script disables automatic FFmpeg deployment and uses the operating system's ICU library when the deployed copy matches the system file. The package inventory identifies the Microsoft redistributables included with each build.
 
+The Linux preview built from the pinned Qt sources uses PulseAudio for audio output and includes Qt's XCB and Wayland client plugins. FFmpeg is disabled in this build. The Qt SDK's SPDX documents are included under `licenses/qt-sbom/` when supplied by the SDK. These documents describe the SDK build, including files that are outside this package, and record the SDK checksums before deployment. The source revisions used for the Linux build are recorded in `dependencies.lock.json` in the application source repository.
+
+The Ubuntu 22.04 reference build of Qt contains code from the X.Org libraries `libx11` 2:1.7.5-1ubuntu0.4, `libxcb` 1.14-3ubuntu3, and `xcb-util` 0.4.0-1build2. The copyright and license notices from the Ubuntu development packages used for this build are in `licenses/linux-qt/`. Review the XCB link inputs when rebuilding Qt with a different toolchain or dependency set.
+
 ## SoapySDR and hardware drivers
 
 SoapySDR 0.8 is an external runtime accessed through its public C API; upstream: [pothosware/SoapySDR](https://github.com/pothosware/SoapySDR), BSL-1.0. Users install SoapyHackRF/SoapyRTLSDR/SoapyAirspy, USB libraries, and device SDKs separately. These components are not copied by the packaging process and are not covered by the application's MIT license. Driver terms may differ, including copyleft licenses; distributing them together requires a separate review.
@@ -22,7 +26,7 @@ The source repository includes a modified SoapySDR vcpkg port recipe derived fro
 
 ## Status
 
-This notice does not indicate that the audit is complete. The final G6 gate requires checking the actual binary dependencies, all applicable notices, and license texts. `package-manifest.json` contains filenames, sizes, and SHA-256 hashes, but does not by itself replace a complete SBOM covering licenses and dependencies.
+The final G6 gate requires checking the actual binary dependencies, all applicable notices, and license texts. The Windows `package-manifest.json` records filenames, sizes, and SHA-256 hashes. The Qt SPDX documents provide license and dependency information for the SDK, while the shipped binary inventory determines which records apply to each package.
 
 ## IBM Plex fonts
 

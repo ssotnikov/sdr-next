@@ -48,6 +48,9 @@ qt_deploy_runtime_dependencies(
     "${PROJECT_SOURCE_DIR}/docs/USER_GUIDE.md"
     DESTINATION .)
   install(DIRECTORY "${PROJECT_SOURCE_DIR}/third_party/licenses/" DESTINATION licenses/upstream)
+  install(DIRECTORY "${PROJECT_SOURCE_DIR}/third_party/linux-qt/" DESTINATION licenses/linux-qt)
+  install(DIRECTORY "${QT6_INSTALL_PREFIX}/sbom/" DESTINATION licenses/qt-sbom OPTIONAL
+    FILES_MATCHING PATTERN "*.spdx" PATTERN "*.spdx.json")
 endif()
 
 # Shared by the receiver and its QML integration tests; fonts travel with the executable.
