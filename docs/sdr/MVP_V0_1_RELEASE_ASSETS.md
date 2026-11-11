@@ -1,6 +1,6 @@
 # Локальные артефакты кандидата SDR Next 0.1
 
-Windows-кандидат собирается с `-WithoutOptionalWindowsBinaries` и отдельным получением Microsoft Visual C++ v14 x64 Runtime. Он использует динамические библиотеки Qt и штатный графический стек Windows. Для D3D11, WARP и программного backend Qt Quick действуют результаты испытаний ниже. Явный выбор Mesa software OpenGL требует дополнительной DLL, исключённой из кандидата. Итоговое решение о публичной поставке принимается после проверок 7.5–7.7. [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) · [Графические режимы Qt](https://doc.qt.io/qt-6.10/windows-graphics.html)
+Windows-кандидат собирается с `-WithoutOptionalWindowsBinaries` и отдельным получением Microsoft Visual C++ v14 x64 Runtime. Он использует динамические библиотеки Qt и штатный графический стек Windows. Для D3D11, WARP и программного backend Qt Quick действуют результаты испытаний ниже. Явный выбор Mesa software OpenGL требует дополнительной DLL, исключённой из кандидата. Итоговое решение о публичной поставке принимается после проверок 7.5–7.7 и [финальной приёмки 8.1](../../openspec/changes/plan-mvp-v0-1/tasks.md#8-g7--финальная-проверка-на-чистых-windows). [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) · [Графические режимы Qt](https://doc.qt.io/qt-6.10/windows-graphics.html)
 
 ## Файлы и контрольные суммы
 
@@ -32,7 +32,7 @@ Windows-бинарники собраны из ревизии `19a66ada6dab4dfec
     -WithoutOptionalWindowsBinaries -QtNoticeSource $verifiedQtSource -TikaNotice $tikaNotice
 ```
 
-На чистых Windows 10 22H2 и Windows 11 проверить установку VC++ Runtime из официального источника, запуск через `Start-SDR.cmd` и синтетический RX с системным `PATH`. Проверить звук и обновление спектра, D3D11 и WARP, затем задокументировать версии ОС, runtime, драйвера и выбранный Qt backend. Физические проверки HackRF учитываются отдельно по протоколу приёмки.
+В финальной задаче 8.1 после завершения разработки на чистых Windows 10 22H2 x64 и Windows 11 x64 проверить установку VC++ Runtime из официального источника, запуск через `Start-SDR.cmd` и синтетический RX с системным `PATH`. Проверить звук и обновление спектра, D3D11 и WARP, затем задокументировать версии ОС, runtime, драйвера и выбранный Qt backend. Физические проверки HackRF учитываются отдельно по протоколу приёмки.
 
 ## Функциональная проверка распакованного Windows-кандидата
 
